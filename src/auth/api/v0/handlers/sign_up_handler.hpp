@@ -1,7 +1,7 @@
 #pragma once
 
 #include <userver/server/handlers/http_handler_json_base.hpp>
-#include <auth/domain/services/auth_service.hpp>
+#include <auth/services/auth_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
     class SignUpHandler final : public userver::server::handlers::HttpHandlerJsonBase {

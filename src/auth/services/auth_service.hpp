@@ -1,6 +1,6 @@
 #pragma once
 
-#include <auth/domain/services/auth_service_types.hpp>
+#include <auth/services/auth_service_types.hpp>
 #include <auth/domain/models/user.hpp>
 
 namespace smirkly::auth::domain::services {

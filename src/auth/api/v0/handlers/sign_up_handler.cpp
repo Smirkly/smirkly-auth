@@ -3,7 +3,7 @@
 
 #include <auth/api/v0/dto/sign_up_request.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
-#include <auth/domain/services/auth_service.hpp>
+#include <auth/services/auth_service.hpp>
 #include <auth/components/auth_service_component.hpp>
 
 #include "userver/components/component_context.hpp"

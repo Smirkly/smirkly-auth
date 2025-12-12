@@ -1,4 +1,4 @@
-#include <auth/domain/services/auth_service.hpp>
+#include <auth/services/auth_service.hpp>
 
 namespace smirkly::auth::domain::services {
     AuthService::AuthService(/* dependences */) {

@@ -2,7 +2,7 @@
 
 #include <userver/components/loggable_component_base.hpp>
 
-#include <auth/domain/services/auth_service.hpp>
+#include <auth/services/auth_service.hpp>
 
 namespace smirkly::auth::components {
     class AuthServiceComponent final : public userver::components::LoggableComponentBase {
