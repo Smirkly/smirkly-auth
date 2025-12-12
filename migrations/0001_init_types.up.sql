@@ -1,0 +1,1 @@
+CREATE TYPE device_type_enum AS ENUM ('ios', 'android', 'web', 'desktop');

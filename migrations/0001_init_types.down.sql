@@ -1,0 +1,1 @@
+DROP TYPE IF EXISTS device_type_enum;

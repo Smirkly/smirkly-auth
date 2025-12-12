@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  smirkly-postgres:
+    image: postgres:16
+    container_name: smirkly-postgres
+    restart: always
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d/
+
+volumes:
+  pgdata:
