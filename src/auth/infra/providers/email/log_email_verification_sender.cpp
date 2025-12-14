@@ -1,0 +1,1 @@
+#include <auth/infra/providers/email/log_email_verification_sender.hpp>

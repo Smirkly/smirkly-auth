@@ -1,4 +1,1 @@
-#ifndef MY_SERVICE_DEVICE_HPP
-#define MY_SERVICE_DEVICE_HPP
-
-#endif //MY_SERVICE_DEVICE_HPP
+#pragma once

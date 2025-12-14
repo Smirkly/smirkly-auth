@@ -21,7 +21,7 @@ properties: {}
 )");
     }
 
-    domain::services::AuthService &AuthServiceComponent::GetService() noexcept { return auth_service_; }
+    services::services::AuthService &AuthServiceComponent::GetService() noexcept { return auth_service_; }
 
-    const domain::services::AuthService &AuthServiceComponent::GetService() const noexcept { return auth_service_; }
+    const services::services::AuthService &AuthServiceComponent::GetService() const noexcept { return auth_service_; }
 }

@@ -14,11 +14,11 @@ namespace smirkly::auth::components {
 
         static userver::yaml_config::Schema GetStaticConfigSchema();
 
-        domain::services::AuthService &GetService() noexcept;
+        services::services::AuthService &GetService() noexcept;
 
-        const domain::services::AuthService &GetService() const noexcept;
+        const services::services::AuthService &GetService() const noexcept;
 
     private:
-        domain::services::AuthService auth_service_;
+        services::services::AuthService auth_service_;
     };
 }

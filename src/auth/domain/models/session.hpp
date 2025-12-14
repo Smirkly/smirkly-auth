@@ -1,4 +1,1 @@
-#ifndef MY_SERVICE_SESSION_HPP
-#define MY_SERVICE_SESSION_HPP
-
-#endif //MY_SERVICE_SESSION_HPP
+#pragma once

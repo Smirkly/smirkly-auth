@@ -10,7 +10,7 @@ namespace smirkly::auth::api::v0::dto {
         }
 
         if (body.HasMember("email")) {
-            dto.phone = body["email"].As<std::string>();
+            dto.email = body["email"].As<std::string>();
         }
 
         if (!body.HasMember("username")) {
@@ -25,8 +25,8 @@ namespace smirkly::auth::api::v0::dto {
             };
         }
 
-        dto.phone = body["username"].As<std::string>();
-        dto.phone = body["password"].As<std::string>();
+        dto.username = body["username"].As<std::string>();
+        dto.password = body["password"].As<std::string>();
 
         if (!dto.phone && !dto.email) {
             throw userver::server::handlers::ClientError{

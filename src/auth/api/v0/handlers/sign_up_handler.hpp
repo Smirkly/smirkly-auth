@@ -21,6 +21,6 @@ namespace smirkly::auth::api::v0::handlers {
         ) const override;
 
     private:
-        smirkly::auth::domain::services::AuthService &auth_service_;
+        smirkly::auth::services::services::AuthService &auth_service_;
     };
 }
