@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 
 namespace smirkly::auth::domain::models {
@@ -8,5 +9,8 @@ namespace smirkly::auth::domain::models {
         std::string password;
         std::optional<std::string> phone;
         std::optional<std::string> email;
+
+        bool is_email_verified = false;
+        bool is_phone_verified = false;
     };
 }

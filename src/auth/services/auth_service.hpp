@@ -1,13 +1,13 @@
 #pragma once
 
-#include <auth/services/auth_service_types.hpp>
+#include <auth/services/types/sign_up.hpp>
 #include <auth/domain/models/user.hpp>
 
-namespace smirkly::auth::domain::services {
+namespace smirkly::auth::services::services {
     class AuthService {
     public:
         AuthService(/* dependences */);
 
-        AuthResult SignUp(const SignUpCommand &cmd);
+        SignUpResult SignUp(const SignUpCommand &cmd);
     };
 }
