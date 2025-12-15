@@ -75,4 +75,5 @@ $(addprefix docker-cmake-, $(PRESETS)) $(addprefix docker-build-, $(PRESETS)) $(
 		$(DOCKER_IMAGE) \
 		env CCACHE_DIR=$$PWD/.ccache \
 		    HOME=$$HOME \
+		    USERVER_ENABLE_STACK_USAGE_MONITOR=0 \
 		    $$PWD/run_as_user.sh $(shell /bin/id -u) $(shell /bin/id -g) make $*

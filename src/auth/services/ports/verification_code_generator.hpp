@@ -2,11 +2,11 @@
 
 #include <string>
 
-namespace smirkly::auth::domain::services::ports {
-    class VerificationCodeGenerator {
+namespace smirkly::auth::services::ports {
+    class EmailVerificationSender {
     public:
         virtual ~VerificationCodeGenerator() = default;
 
-        virtual std::string generate_email_code() = 0;
+        virtual std::string Generate() = 0;
     };
 }
