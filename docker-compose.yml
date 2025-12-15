@@ -12,5 +12,13 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d/
 
+  smirkly-redis:
+    image: redis:7-alpine
+    container_name: smirkly-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: [ "redis-server", "--appendonly", "yes" ]
+
 volumes:
   pgdata:

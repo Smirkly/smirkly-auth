@@ -4,12 +4,13 @@ project(smirkly-auth CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadUserver)
 
+set(USERVER_FEATURE_REDIS ON)
 set(USERVER_FEATURE_POSTGRESQL ON)
 set(USERVER_FEATURE_PATCH_LIBPQ OFF)
 
 find_package(
         userver
-        COMPONENTS core postgresql
+        COMPONENTS core postgresql redis
         QUIET
 )
 if(NOT userver_FOUND)
@@ -18,6 +19,10 @@ if(NOT userver_FOUND)
 endif()
 
 userver_setup_environment()
+
+# include submodules
+add_subdirectory(third_party/libbcrypt)
+include_directories(third_party/libbcrypt/include)
 
 # Common sources
 include_directories(src)
@@ -36,6 +41,8 @@ target_link_libraries(
         PUBLIC
         userver::core
         userver::postgresql
+        userver::redis
+        bcrypt
 )
 
 
@@ -43,16 +50,25 @@ target_link_libraries(
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ${PROJECT_NAME}_objs
-        userver::postgresql
 )
 
-# Unit Tests
+# Unit Testsll
 file(GLOB_RECURSE PROJECT_TEST_SOURCES CONFIGURE_DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/*.cpp
 )
 if(PROJECT_TEST_SOURCES)
     add_executable(${PROJECT_NAME}_unittest ${PROJECT_TEST_SOURCES})
-    target_link_libraries(${PROJECT_NAME}_unittest PRIVATE ${PROJECT_NAME}_objs userver::utest)
+
+    target_link_libraries(${PROJECT_NAME}_unittest
+            PRIVATE
+            ${PROJECT_NAME}_objs
+            userver::core
+            userver::utest
+            userver::postgresql
+            userver::redis
+    )
+
+    # userver macro that adds gtest, filters, etc.
     add_google_tests(${PROJECT_NAME}_unittest)
 endif()
 
