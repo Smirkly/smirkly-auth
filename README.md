@@ -1,17 +1,118 @@
-# my_service
+# smirkly-auth
 
-Template of a C++ service that uses [userver framework](https://github.com/userver-framework/userver).
+Authorization microservice built with the [userver framework](https://github.com/userver-framework/userver).
 
+The service is responsible for:
+
+- user registration (email + password)
+- sign-in / issuing `{access_token, refresh_token}`
+- session and device management (work in progress)
+- password change and logout (work in progress)
+
+> ⚠️ **Status: active development**  
+> APIs, configuration and internal structure may change without backward compatibility guarantees.
+
+---
 
 ## Download and Build
 
-To create your own userver-based service follow the following steps:
+### 1. Clone the repository
 
-1. Press the "Use this template button" at the top right of this GitHub page
-2. Clone the service `git clone your-service-repo && cd your-service-repo && git submodule update --init`
-3. Give a proper name to your service and replace all the occurrences of "my_service" string with that name
-4. Feel free to tweak, adjust or fully rewrite the source code of your service.
+```bash
+git clone https://github.com/Smirkly/smirkly-auth.git
+cd smirkly-auth
+```
 
+If you have not cloned with --recurse-submodules, initialize submodules:
+
+```bash
+git submodule update --init
+```
+
+This will pull third-party dependencies such as userver and libbcrypt.
+
+### 2. Create .env
+
+Create a .env file in the project root with database settings, for example:
+
+```dotenv
+POSTGRES_DB=smirkly_auth
+POSTGRES_USER=smirkly_auth
+POSTGRES_PASSWORD=smirkly_auth
+```
+
+These values are used by local Postgres (e.g. via docker-compose.yml) and must match the connection settings in your
+configs.
+
+### 3. Create configs/config_vars.yaml
+
+Create configs/config_vars.yaml with basic runtime options, for example:
+
+```yaml
+worker-threads: 4
+worker-fs-threads: 2
+logger-level: info
+
+is-testing: false
+
+server-port: 8080
+```
+
+worker-threads / worker-fs-threads – userver task processors.
+
+logger-level – log level (trace, debug, info, warning, error…).
+
+server-port – HTTP port for the auth service.
+
+You may extend this file as the service evolves.
+
+### 4. Configure and build (via Makefile)
+
+This project uses the standard userver service template Makefile.
+```PRESET``` is one of:
+
+```debug```
+
+```release```
+
+```debug-custom```
+
+```release-custom``` (if you add custom presets in CMakeUserPresets.json)
+
+Typical workflow:
+
+```bash
+# Configure CMake for debug preset
+make cmake-debug
+
+  # Build the service
+make build-debug
+
+  # Build and run all tests
+make test-debug
+
+```
+
+The resulting binary will be in build-debug/ (for debug preset).
+
+Running the service locally
+
+After a successful build:
+
+Make sure Postgres and Redis are running and accessible
+
+Either via your local installation
+
+Or via docker-compose up if you use Docker for infra
+
+Run the service, for example:
+
+```bash
+./build-debug/smirkly-auth \
+--config ./configs/static_config.yaml
+```
+
+If your static_config.yaml is using config_vars.yaml (userver-style), ensure both files are present in configs/.
 
 ## Makefile
 
@@ -29,9 +130,33 @@ can also be `debug-custom`, `release-custom`.
 * `make docker-COMMAND` - run `make COMMAND` in docker environment
 * `make docker-clean-data` - stop docker containers
 
+## Tests
+
+Unit tests are written in C++ using userver::utest (GoogleTest-based) and live under tests/unit/.
+
+To run them locally:
+
+```bash
+make test-debug
+
+```
+
+or explicitly:
+
+```bash
+cmake -S . -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build cmake-build-debug -j$(nproc)
+cd cmake-build-debug
+ctest --output-on-failure
+```
+
+New tests should be placed under tests/unit/… and will be picked up automatically by CMake if they match the configured
+glob (tests/unit/*.cpp).
 
 ## License
 
-The original template is distributed under the [Apache-2.0 License](https://github.com/userver-framework/userver/blob/develop/LICENSE)
-and [CLA](https://github.com/userver-framework/userver/blob/develop/CONTRIBUTING.md). Services based on the template may change
+The original template is distributed under
+the [Apache-2.0 License](https://github.com/userver-framework/userver/blob/develop/LICENSE)
+and [CLA](https://github.com/userver-framework/userver/blob/develop/CONTRIBUTING.md). Services based on the template may
+change
 the license and CLA.
