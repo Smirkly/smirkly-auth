@@ -4,7 +4,7 @@
 
 #include <auth/domain/models/user.hpp>
 
-namespace smirkly::auth::domain::services::ports {
+namespace smirkly::auth::services::ports {
     struct NewUserData {
         std::string username;
         std::string password_hash;
@@ -22,15 +22,15 @@ namespace smirkly::auth::domain::services::ports {
 
         [[nodiscard]] virtual bool ExistsByPhone(std::string_view phone) = 0;
 
-        [[nodiscard]] virtual std::optional<models::User> FindById(std::string_view id) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindById(std::string_view id) = 0;
 
-        [[nodiscard]] virtual std::optional<models::User> FindByUsername(std::string_view username) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindByUsername(std::string_view username) = 0;
 
-        [[nodiscard]] virtual std::optional<models::User> FindByEmail(std::string_view email) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindByEmail(std::string_view email) = 0;
 
-        [[nodiscard]] virtual std::optional<models::User> FindByPhone(std::string_view phone) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindByPhone(std::string_view phone) = 0;
 
-        [[nodiscard]] virtual models::User Insert(const NewUserData &data) = 0;
+        [[nodiscard]] virtual domain::models::User Insert(const NewUserData &data) = 0;
 
         virtual void set_email_verified(std::string_view user_id, bool verified) = 0;
 

@@ -1,11 +1,11 @@
 #pragma once
-#include "auth/services/auth_service.hpp"
+#include <auth/services/auth_service.hpp>
 
-namespace smirkly::auth::domain::services::ports {
-    class VerificationCodeGenerator {
+namespace smirkly::auth::services::ports {
+    class EmailVerificationSender {
     public:
-        virtual ~VerificationCodeGenerator() = default;
+        virtual ~EmailVerificationSender() = default;
 
-        virtual void send_verification_email(const domain::models::User user, std::string_view code) = 0;
+        virtual void SendVerificationEmail(const domain::models::User user, std::string_view code) = 0;
     };
 }

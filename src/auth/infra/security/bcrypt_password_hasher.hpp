@@ -3,7 +3,7 @@
 #include <auth/services/ports/password_hasher.hpp>
 
 namespace smirkly::auth::infra::security {
-    class BcryptPasswordHasher final : public domain::services::ports::PasswordHasher {
+    class BcryptPasswordHasher final : public services::ports::PasswordHasher {
     public:
         [[nodiscard]] std::string Hash(std::string_view password) const override;
 

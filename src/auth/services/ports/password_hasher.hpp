@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace smirkly::auth::domain::services::ports {
+namespace smirkly::auth::services::ports {
     class PasswordHasher {
     public:
         virtual ~PasswordHasher() = default;
