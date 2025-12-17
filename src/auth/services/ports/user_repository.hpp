@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <string>
+#include <string_view>
 
 #include <auth/domain/models/user.hpp>
 
@@ -32,12 +34,12 @@ namespace smirkly::auth::services::ports {
 
         [[nodiscard]] virtual domain::models::User Insert(const NewUserData &data) = 0;
 
-        virtual void set_email_verified(std::string_view user_id, bool verified) = 0;
+        virtual void SetEmailVerified(std::string_view user_id, bool verified) = 0;
 
-        virtual void set_phone_verified(std::string_view user_id, bool verified) = 0;
+        virtual void SetPhoneVerified(std::string_view user_id, bool verified) = 0;
 
-        virtual void soft_delete(std::string_view user_id) = 0;
+        virtual void SoftDelete(std::string_view user_id) = 0;
 
-        virtual void update_password_hash(std::string_view user_id, std::string_view new_password_hash) = 0;
+        virtual void UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) = 0;
     };
 }
