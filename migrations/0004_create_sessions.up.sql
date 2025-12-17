@@ -9,6 +9,5 @@ CREATE TABLE sessions
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_used_at       TIMESTAMPTZ,
     expires_at         TIMESTAMPTZ NOT NULL,
-    revoked_at         TIMESTAMPTZ,
-    is_active          BOOLEAN GENERATED ALWAYS AS (revoked_at IS NULL AND expires_at > now()) STORED
+    revoked_at         TIMESTAMPTZ
 );
