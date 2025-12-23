@@ -4,6 +4,9 @@ project(smirkly-auth CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadUserver)
 
+set(USERVER_PYTHON "/opt/homebrew/bin/python3.12"
+        CACHE FILEPATH "Python for userver venvs")
+
 set(USERVER_FEATURE_REDIS ON)
 set(USERVER_FEATURE_POSTGRESQL ON)
 set(USERVER_FEATURE_PATCH_LIBPQ OFF)
@@ -83,7 +86,14 @@ if(PROJECT_BENCH_SOURCES)
 endif()
 
 # Functional testing
-#userver_testsuite_add_simple()
+option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" OFF)
+
+if (SMIRKLY_AUTH_ENABLE_TESTSUITE)
+    userver_testsuite_add_simple(
+            SERVICE_TARGET ${PROJECT_NAME}
+    )
+endif()
+
 
 # Install
 include(GNUInstallDirs)
