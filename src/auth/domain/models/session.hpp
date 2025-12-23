@@ -1,8 +1,8 @@
 #pragma once
 
-#include <string>
-#include <optional>
 #include <chrono>
+#include <optional>
+#include <string>
 
 namespace smirkly::auth::domain::models {
     struct Session {

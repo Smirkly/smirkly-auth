@@ -1,4 +1,5 @@
 #include <userver/utest/utest.hpp>
+
 #include <auth/infra/security/bcrypt_password_hasher.hpp>
 
 namespace {

@@ -1,8 +1,8 @@
 #include <auth/components/auth_service_component.hpp>
 
-#include <userver/yaml_config/merge_schemas.hpp>
-#include <userver/storages/postgres/component.hpp>
 #include <userver/components/component_context.hpp>
+#include <userver/storages/postgres/component.hpp>
+#include <userver/yaml_config/merge_schemas.hpp>
 
 namespace smirkly::auth::components {
     AuthServiceComponent::AuthServiceComponent(

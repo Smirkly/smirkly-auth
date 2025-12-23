@@ -1,4 +1,5 @@
 #include <auth/infra/db/pg/postgres_user_repository.hpp>
+
 #include <userver/storages/postgres/cluster.hpp>
 
 #include <smirkly::auth/sql_queries.hpp>

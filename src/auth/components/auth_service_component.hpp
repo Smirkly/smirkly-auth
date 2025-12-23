@@ -2,10 +2,10 @@
 
 #include <userver/components/loggable_component_base.hpp>
 
-#include <auth/infra/security/bcrypt_password_hasher.hpp>
-#include <auth/infra/security/random_verification_code_generator.hpp>
 #include <auth/infra/db/pg/postgres_user_repository.hpp>
 #include <auth/infra/providers/email/log_email_verification_sender.hpp>
+#include <auth/infra/security/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/random_verification_code_generator.hpp>
 #include <auth/services/auth_service.hpp>
 
 namespace smirkly::auth::components {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <optional>
+#include <string>
 
 #include <auth/domain/models/user.hpp>
 #include <auth/services/types/auth_tokens.hpp>
