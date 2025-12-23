@@ -16,12 +16,31 @@ find_package(
         COMPONENTS core postgresql redis
         QUIET
 )
-if(NOT userver_FOUND)
+if (NOT userver_FOUND)
     # Tries TRY_DIR first, falls back to downloading userver from GitHub using CPM.
     download_userver(TRY_DIR third_party/userver)
-endif()
+endif ()
 
 userver_setup_environment()
+
+# SQL library
+
+userver_add_sql_library(
+        ${PROJECT_NAME}_sql
+        NAMESPACE
+        smirkly::auth
+        SOURCE_DIR
+        ${CMAKE_CURRENT_SOURCE_DIR}/sql/auth
+        OUTPUT_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}
+        SQL_FILES
+        read/users/*.sql
+        read/devices/*.sql
+        read/sessions/*.sql
+        write/users/*.sql
+        write/devices/*.sql
+        write/sessions/*.sql
+)
 
 # include submodules
 add_subdirectory(third_party/libbcrypt)
@@ -44,6 +63,7 @@ target_link_libraries(
         PUBLIC
         userver::core
         userver::postgresql
+        ${PROJECT_NAME}_sql
         userver::redis
         bcrypt
 )
@@ -59,7 +79,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 file(GLOB_RECURSE PROJECT_TEST_SOURCES CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/*.cpp
 )
-if(PROJECT_TEST_SOURCES)
+if (PROJECT_TEST_SOURCES)
     add_executable(${PROJECT_NAME}_unittest ${PROJECT_TEST_SOURCES})
 
     target_link_libraries(${PROJECT_NAME}_unittest
@@ -73,17 +93,17 @@ if(PROJECT_TEST_SOURCES)
 
     # userver macro that adds gtest, filters, etc.
     add_google_tests(${PROJECT_NAME}_unittest)
-endif()
+endif ()
 
 # Benchmarks
 file(GLOB_RECURSE PROJECT_BENCH_SOURCES CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.cpp
 )
-if(PROJECT_BENCH_SOURCES)
+if (PROJECT_BENCH_SOURCES)
     add_executable(${PROJECT_NAME}_benchmark ${PROJECT_BENCH_SOURCES})
     target_link_libraries(${PROJECT_NAME}_benchmark PRIVATE ${PROJECT_NAME}_objs userver::ubench)
     add_google_benchmark_tests(${PROJECT_NAME}_benchmark)
-endif()
+endif ()
 
 # Functional testing
 option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" OFF)
@@ -91,18 +111,19 @@ option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" OFF)
 if (SMIRKLY_AUTH_ENABLE_TESTSUITE)
     userver_testsuite_add_simple(
             SERVICE_TARGET ${PROJECT_NAME}
+            SQL_LIBRARY ${PROJECT_NAME}_sql
     )
-endif()
+endif ()
 
 
 # Install
 include(GNUInstallDirs)
 
-if(DEFINED ENV{PREFIX})
+if (DEFINED ENV{PREFIX})
     message(STATUS "Set install prefix: $ENV{PREFIX}")
     file(TO_CMAKE_PATH "$ENV{PREFIX}" PREFIX_PATH)
     set(CMAKE_INSTALL_PREFIX "${PREFIX_PATH}")
-endif()
+endif ()
 
 file(GLOB CONFIGS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/configs/*.yaml ${CMAKE_CURRENT_SOURCE_DIR}/configs/*.json)
 

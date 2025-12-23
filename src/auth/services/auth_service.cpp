@@ -22,6 +22,11 @@ namespace smirkly::auth::services::services {
         user.phone = cmd.phone;
         user.email = cmd.email;
 
+        bool exists = user_repo_.ExistsByUsername(cmd.username);
+        if (exists) {
+            user.username = "EXISTS";
+        }
+
         return {std::move(user)};
     }
 }
