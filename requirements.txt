@@ -1,1 +1,6 @@
 pycodestyle
+pytest
+yandex-taxi-testsuite[postgresql-binary,redis]
+redis
+psycopg2-binary
+pytest-asyncio
