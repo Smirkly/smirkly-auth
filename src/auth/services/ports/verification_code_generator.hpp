@@ -3,7 +3,7 @@
 #include <string>
 
 namespace smirkly::auth::services::ports {
-    class EmailVerificationSender {
+    class VerificationCodeGenerator {
     public:
         virtual ~VerificationCodeGenerator() = default;
 
