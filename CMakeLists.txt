@@ -34,12 +34,13 @@ userver_add_sql_library(
         OUTPUT_DIR
         ${CMAKE_CURRENT_BINARY_DIR}
         SQL_FILES
-        read/users/*.sql
         read/devices/*.sql
         read/sessions/*.sql
-        write/users/*.sql
+        read/users/*.sql
         write/devices/*.sql
+        write/email_outbox/*.sql
         write/sessions/*.sql
+        write/users/*.sql
 )
 
 # include submodules

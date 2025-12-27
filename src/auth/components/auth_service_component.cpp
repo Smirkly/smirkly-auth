@@ -9,13 +9,22 @@ namespace smirkly::auth::components {
         const userver::components::ComponentConfig &cfg,
         const userver::components::ComponentContext &ctx)
         : userver::components::LoggableComponentBase(cfg, ctx),
+          email_outbox_repo_(
+              ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster()
+          ),
           user_repo_(
               ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster()
           ),
-          password_hasher_(),
           email_sender_(/* GetLogger() */),
+          password_hasher_(),
           code_generator_(6),
-          auth_service_(user_repo_, password_hasher_, email_sender_, code_generator_ /* dependences */) {
+          auth_service_(
+              user_repo_,
+              password_hasher_,
+              email_sender_,
+              code_generator_,
+              email_outbox_repo_
+              /* dependences */) {
     }
 
     userver::yaml_config::Schema AuthServiceComponent::GetStaticConfigSchema() {

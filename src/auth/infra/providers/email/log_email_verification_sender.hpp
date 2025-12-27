@@ -6,6 +6,6 @@
 namespace smirkly::auth::infra::providers::email {
     class EmailVerificationSender final : public services::ports::EmailVerificationSender {
     public:
-        void SendVerificationEmail(const domain::models::User &user, std::string_view code) override;
+        void SendVerificationEmail(const services::ports::VerificationEmail &msg) override;
     };
 }

@@ -1,6 +1,7 @@
 #include <auth/infra/db/pg/postgres_user_repository.hpp>
 
 #include <userver/storages/postgres/cluster.hpp>
+#include <userver/storages/postgres/io/row_types.hpp>
 
 #include <smirkly::auth/sql_queries.hpp>
 
@@ -9,8 +10,8 @@ namespace smirkly::auth::infra::db::pg {
         : pg_cluster_(std::move(pg_cluster)) {
     }
 
-    [[nodiscard]] bool PostgresUserRepository::ExistsByUsername(std::string_view username) {
-        auto res = pg_cluster_->Execute(
+    bool PostgresUserRepository::ExistsByUsername(std::string_view username) {
+        const auto res = pg_cluster_->Execute(
             USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
             sql::kUsersExistsByUsername,
             username
@@ -18,8 +19,8 @@ namespace smirkly::auth::infra::db::pg {
         return res.AsSingleRow<bool>();
     }
 
-    [[nodiscard]] bool PostgresUserRepository::ExistsByEmail(std::string_view email) {
-        auto res = pg_cluster_->Execute(
+    bool PostgresUserRepository::ExistsByEmail(std::string_view email) {
+        const auto res = pg_cluster_->Execute(
             USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
             sql::kUsersExistsByEmail,
             email
@@ -27,8 +28,8 @@ namespace smirkly::auth::infra::db::pg {
         return res.AsSingleRow<bool>();
     }
 
-    [[nodiscard]] bool PostgresUserRepository::ExistsByPhone(std::string_view phone) {
-        auto res = pg_cluster_->Execute(
+    bool PostgresUserRepository::ExistsByPhone(std::string_view phone) {
+        const auto res = pg_cluster_->Execute(
             USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
             sql::kUsersExistsByPhone,
             phone
@@ -36,25 +37,58 @@ namespace smirkly::auth::infra::db::pg {
         return res.AsSingleRow<bool>();
     }
 
-    [[nodiscard]] std::optional<domain::models::User> PostgresUserRepository::FindById(std::string_view id) {
+    std::optional<domain::models::User> PostgresUserRepository::FindById(std::string_view id) {
         return {};
     }
 
-    [[nodiscard]] std::optional<domain::models::User>
+    std::optional<domain::models::User>
     PostgresUserRepository::FindByUsername(std::string_view username) {
         return {};
     }
 
-    [[nodiscard]] std::optional<domain::models::User> PostgresUserRepository::FindByEmail(std::string_view email) {
+    std::optional<domain::models::User> PostgresUserRepository::FindByEmail(std::string_view email) {
         return {};
     }
 
-    [[nodiscard]] std::optional<domain::models::User> PostgresUserRepository::FindByPhone(std::string_view phone) {
+    std::optional<domain::models::User> PostgresUserRepository::FindByPhone(std::string_view phone) {
         return {};
     }
 
-    [[nodiscard]] domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
-        return {};
+    domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
+        try {
+            const auto res = pg_cluster_->Execute(
+                USERVER_NAMESPACE::storages::postgres::ClusterHostType::kMaster,
+                sql::kUsersInsert,
+                data.username,
+                data.email,
+                data.phone,
+                data.password_hash
+            );
+
+            using Row = std::tuple<
+                std::string,
+                std::string,
+                std::optional<std::string>,
+                std::optional<std::string>,
+                std::string,
+                bool,
+                bool>;
+
+            const auto row = res.AsSingleRow<Row>(USERVER_NAMESPACE::storages::postgres::kRowTag);
+
+            domain::models::User user;
+            user.id = std::get<0>(row);
+            user.username = std::get<1>(row);
+            user.email = std::get<2>(row);
+            user.phone = std::get<3>(row);
+            user.password = std::get<4>(row);
+            user.is_email_verified = std::get<5>(row);
+            user.is_phone_verified = std::get<6>(row);
+
+            return user;
+        } catch (const USERVER_NAMESPACE::storages::postgres::UniqueViolation &e) {
+            throw;
+        }
     }
 
     void PostgresUserRepository::SetEmailVerified(std::string_view user_id, bool verified) {
