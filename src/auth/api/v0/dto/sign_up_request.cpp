@@ -1,5 +1,6 @@
-#include <auth/api/v0/dto/sign_up_request.hpp>
 #include <userver/server/handlers/exceptions.hpp>
+
+#include <auth/api/v0/dto/sign_up_request.hpp>
 
 namespace smirkly::auth::api::v0::dto {
     SignUpRequest SignUpRequest::FromJson(const userver::formats::json::Value &body) {

@@ -1,0 +1,1 @@
+#include <auth/infra/db/pg/types/session_pg.hpp>

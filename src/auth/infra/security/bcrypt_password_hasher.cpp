@@ -1,4 +1,5 @@
 #include <auth/infra/security/bcrypt_password_hasher.hpp>
+
 #include <bcrypt/BCrypt.hpp>
 
 namespace smirkly::auth::infra::security {

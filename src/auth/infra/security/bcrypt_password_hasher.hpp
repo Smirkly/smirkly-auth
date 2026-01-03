@@ -1,6 +1,6 @@
 #pragma once
 
-#include <auth/services/ports/password_hasher.hpp>
+#include <auth/services/ports/security/password_hasher.hpp>
 
 namespace smirkly::auth::infra::security {
     class BcryptPasswordHasher final : public services::ports::PasswordHasher {

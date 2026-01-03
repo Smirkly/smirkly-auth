@@ -1,0 +1,1 @@
+#include <auth/infra/db/pg/types/user_pg.hpp>

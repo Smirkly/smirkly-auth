@@ -3,8 +3,8 @@
 #include <auth/api/v0/dto/sign_up_request.hpp>
 #include <auth/api/v0/dto/tokens_response.hpp>
 #include <auth/api/v0/dto/user_response.hpp>
-#include <auth/services/types/sign_up.hpp>
-#include <auth/services/types/sign_in.hpp>
+#include <auth/services/contracts/sign_in.hpp>
+#include <auth/services/contracts/sign_up.hpp>
 
 namespace smirkly::auth::infra::mapping {
     services::SignUpCommand ToDomain(const api::v0::dto::SignUpRequest &dto);
