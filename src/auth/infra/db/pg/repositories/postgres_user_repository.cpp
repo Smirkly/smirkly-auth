@@ -54,6 +54,12 @@ namespace smirkly::auth::infra::db::pg {
         return {};
     }
 
+
+    domain::models::User PostgresUserRepository::Insert(services::ports::DbTransaction &tx,
+                                                        const services::ports::NewUserData &data) {
+        return {};
+    }
+
     domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
         try {
             const auto res = pg_cluster_->Execute(
@@ -91,16 +97,35 @@ namespace smirkly::auth::infra::db::pg {
         }
     }
 
+
+    void PostgresUserRepository::SetEmailVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+                                                  bool verified) {
+    }
+
     void PostgresUserRepository::SetEmailVerified(std::string_view user_id, bool verified) {
         return;
+    }
+
+
+    void PostgresUserRepository::SetPhoneVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+                                                  bool verified) {
     }
 
     void PostgresUserRepository::SetPhoneVerified(std::string_view user_id, bool verified) {
         return;
     }
 
+
+    void PostgresUserRepository::SoftDelete(services::ports::DbTransaction &tx, std::string_view user_id) {
+    }
+
     void PostgresUserRepository::SoftDelete(std::string_view user_id) {
         return;
+    }
+
+
+    void PostgresUserRepository::UpdatePasswordHash(services::ports::DbTransaction &tx, std::string_view user_id,
+                                                    std::string_view new_password_hash) {
     }
 
     void PostgresUserRepository::UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) {

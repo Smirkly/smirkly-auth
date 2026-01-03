@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <auth/infra/db/pg/transactions/pg_transaction.hpp>
+
 namespace smirkly::auth::infra::db::pg {
     PgTransaction &AsPgTx(services::ports::DbTransaction &tx, std::string_view where) {
         auto *pg_tx = dynamic_cast<PgTransaction *>(&tx);

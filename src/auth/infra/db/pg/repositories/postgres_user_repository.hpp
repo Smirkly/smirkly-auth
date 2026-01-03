@@ -32,13 +32,32 @@ namespace smirkly::auth::infra::db::pg {
 
         [[nodiscard]] std::optional<domain::models::User> FindByPhone(std::string_view phone) override;
 
+
+        [[nodiscard]] domain::models::User Insert(services::ports::DbTransaction &tx,
+                                                  const services::ports::NewUserData &data) override;
+
         [[nodiscard]] domain::models::User Insert(const services::ports::NewUserData &data) override;
+
+
+        void SetEmailVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+                              bool verified) override;
 
         void SetEmailVerified(std::string_view user_id, bool verified) override;
 
+
+        void SetPhoneVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+                              bool verified) override;
+
         void SetPhoneVerified(std::string_view user_id, bool verified) override;
 
+
+        void SoftDelete(services::ports::DbTransaction &tx, std::string_view user_id) override;
+
         void SoftDelete(std::string_view user_id) override;
+
+
+        void UpdatePasswordHash(services::ports::DbTransaction &tx, std::string_view user_id,
+                                std::string_view new_password_hash) override;
 
         void UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) override;
 

@@ -6,6 +6,7 @@
 #include <auth/services/ports/security/password_hasher.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
+#include <auth/services/ports/uow/transaction_manager.hpp>
 #include <auth/services/contracts/sign_up.hpp>
 
 namespace smirkly::auth::services::usecases {
