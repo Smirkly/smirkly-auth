@@ -14,7 +14,7 @@ USERVER_NAMESPACE_END
 namespace smirkly::auth::infra::db::pg {
     class PgTransactionManager;
 
-    class PgTransaction final : public ::smirkly::auth::services::ports::DbTransaction {
+    class PgTransaction final : public services::ports::DbTransaction {
         friend class PgTransactionManager;
 
         explicit PgTransaction(std::unique_ptr<USERVER_NAMESPACE::storages::postgres::Transaction> tx);
