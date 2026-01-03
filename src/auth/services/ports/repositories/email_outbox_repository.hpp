@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include <auth/services/ports/uow/db_transaction.hpp>
+
 namespace smirkly::auth::services::ports {
     struct EnqueueVerificationEmail {
         std::string to_email;
@@ -15,6 +17,8 @@ namespace smirkly::auth::services::ports {
     class EmailOutboxRepository {
     public:
         virtual ~EmailOutboxRepository() = default;
+
+        virtual void Insert(DbTransaction &tx, const EnqueueVerificationEmail &msg) = 0;
 
         virtual void Insert(const EnqueueVerificationEmail &msg) = 0;
     };

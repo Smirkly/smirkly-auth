@@ -5,6 +5,7 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <auth/infra/db/pg/repositories/postgres_email_outbox_repository.hpp>
+#include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
 #include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
 #include <auth/infra/providers/email/log_email_verification_sender.hpp>
 #include <auth/infra/security/bcrypt_password_hasher.hpp>
@@ -15,6 +16,7 @@ namespace smirkly::auth::components {
     struct AuthServiceComponent::Impl {
         infra::db::pg::PostgresEmailOutboxRepository email_outbox_repo;
         infra::db::pg::PostgresUserRepository user_repo;
+        infra::db::pg::PgTransactionManager transaction_manager;
         infra::providers::email::EmailVerificationSender email_sender;
         infra::security::BcryptPasswordHasher password_hasher;
         infra::security::RandomVerificationCodeGenerator code_generator;
@@ -23,10 +25,11 @@ namespace smirkly::auth::components {
         Impl(const userver::components::ComponentContext &ctx)
             : email_outbox_repo(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
               , user_repo(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
+              , transaction_manager(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
               , email_sender()
               , password_hasher()
               , code_generator(6)
-              , auth_service(user_repo, password_hasher, email_sender, code_generator, email_outbox_repo) {
+              , auth_service(user_repo, password_hasher, email_sender, code_generator, email_outbox_repo, transaction_manager) {
         }
     };
 

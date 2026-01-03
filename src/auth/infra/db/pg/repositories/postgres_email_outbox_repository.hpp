@@ -17,6 +17,7 @@ namespace smirkly::auth::infra::db::pg {
     public:
         explicit PostgresEmailOutboxRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster);
 
+        void Insert(services::ports::DbTransaction &tx, const services::ports::EnqueueVerificationEmail &job) override;
 
         void Insert(const services::ports::EnqueueVerificationEmail &job) override;
 

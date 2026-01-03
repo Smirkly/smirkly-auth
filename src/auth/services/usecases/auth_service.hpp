@@ -16,7 +16,8 @@ namespace smirkly::auth::services::usecases {
             ports::PasswordHasher &password_hasher,
             ports::EmailVerificationSender &email_sender,
             ports::VerificationCodeGenerator &code_generator,
-            ports::EmailOutboxRepository &email_outbox_repo
+            ports::EmailOutboxRepository &email_outbox_repo,
+            ports::TransactionManager &transaction_manager
             /* dependences */);
 
         SignUpResult SignUp(const SignUpCommand &cmd);
@@ -27,5 +28,6 @@ namespace smirkly::auth::services::usecases {
         ports::EmailVerificationSender &email_sender_;
         ports::VerificationCodeGenerator &code_generator_;
         ports::EmailOutboxRepository &email_outbox_repo_;
+        ports::TransactionManager &transaction_manager_;
     };
 }

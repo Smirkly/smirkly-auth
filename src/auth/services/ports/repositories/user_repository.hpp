@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include <auth/domain/models/user.hpp>
+#include <auth/services/ports/uow/db_transaction.hpp>
 
 namespace smirkly::auth::services::ports {
     struct NewUserData {
@@ -32,13 +33,29 @@ namespace smirkly::auth::services::ports {
 
         [[nodiscard]] virtual std::optional<domain::models::User> FindByPhone(std::string_view phone) = 0;
 
+
+        [[nodiscard]] virtual domain::models::User Insert(DbTransaction &tx, const NewUserData &data) = 0;
+
         [[nodiscard]] virtual domain::models::User Insert(const NewUserData &data) = 0;
+
+
+        virtual void SetEmailVerified(DbTransaction &tx, std::string_view user_id, bool verified) = 0;
 
         virtual void SetEmailVerified(std::string_view user_id, bool verified) = 0;
 
+
+        virtual void SetPhoneVerified(DbTransaction &tx, std::string_view user_id, bool verified) = 0;
+
         virtual void SetPhoneVerified(std::string_view user_id, bool verified) = 0;
 
+
+        virtual void SoftDelete(DbTransaction &tx, std::string_view user_id) = 0;
+
         virtual void SoftDelete(std::string_view user_id) = 0;
+
+
+        virtual void UpdatePasswordHash(DbTransaction &tx, std::string_view user_id,
+                                        std::string_view new_password_hash) = 0;
 
         virtual void UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) = 0;
     };
