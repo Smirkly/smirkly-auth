@@ -1,6 +1,6 @@
 #include <auth/services/usecases/auth_service.hpp>
 
-namespace smirkly::auth::services::services {
+namespace smirkly::auth::services::usecases {
     AuthService::AuthService(
         ports::UserRepository &user_repo,
         ports::PasswordHasher &password_hasher,

@@ -8,7 +8,7 @@
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/contracts/sign_up.hpp>
 
-namespace smirkly::auth::services::services {
+namespace smirkly::auth::services::usecases {
     class AuthService {
     public:
         AuthService(
