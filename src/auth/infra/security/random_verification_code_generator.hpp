@@ -1,6 +1,6 @@
 #pragma once
 
-#include <auth/services/ports/verification_code_generator.hpp>
+#include <auth/services/ports/support/verification_code_generator.hpp>
 
 namespace smirkly::auth::infra::security {
     class RandomVerificationCodeGenerator : public services::ports::VerificationCodeGenerator {

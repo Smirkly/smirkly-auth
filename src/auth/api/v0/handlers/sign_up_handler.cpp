@@ -6,7 +6,7 @@
 #include <auth/api/v0/dto/sign_up_request.hpp>
 #include <auth/components/auth_service_component.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
-#include <auth/services/auth_service.hpp>
+#include <auth/services/usecases/auth_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
     SignUpHandler::SignUpHandler(const userver::components::ComponentConfig &config,

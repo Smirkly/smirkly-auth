@@ -1,4 +1,4 @@
-#include <auth/services/auth_service.hpp>
+#include <auth/services/usecases/auth_service.hpp>
 
 namespace smirkly::auth::services::services {
     AuthService::AuthService(

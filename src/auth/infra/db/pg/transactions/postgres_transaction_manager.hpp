@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include <auth/services/ports/db_transaction.hpp>
-#include <auth/services/ports/transaction_manager.hpp>
+#include <auth/services/ports/uow/db_transaction.hpp>
+#include <auth/services/ports/uow/transaction_manager.hpp>
 
 USERVER_NAMESPACE_BEGIN
     namespace storages::postgres {

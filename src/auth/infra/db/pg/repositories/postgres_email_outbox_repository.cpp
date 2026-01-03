@@ -1,4 +1,4 @@
-#include <auth/infra/db/pg/postgres_email_outbox_repository.hpp>
+#include <auth/infra/db/pg/repositories/postgres_email_outbox_repository.hpp>
 
 #include <userver/storages/postgres/cluster.hpp>
 #include <userver/storages/postgres/cluster_types.hpp>

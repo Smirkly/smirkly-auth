@@ -3,7 +3,7 @@
 #include <memory>
 #include <string_view>
 
-#include <auth/services/ports/db_transaction.hpp>
+#include <auth/services/ports/uow/db_transaction.hpp>
 
 namespace smirkly::auth::services::ports {
     class TransactionManager {

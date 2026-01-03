@@ -1,12 +1,12 @@
 #pragma once
 
-#include <auth/services/ports/email_outbox_repository.hpp>
-#include <auth/services/ports/email_verification_sender.hpp>
-#include <auth/services/ports/jwt_token_provider.hpp>
-#include <auth/services/ports/password_hasher.hpp>
-#include <auth/services/ports/user_repository.hpp>
-#include <auth/services/ports/verification_code_generator.hpp>
-#include <auth/services/types/sign_up.hpp>
+#include <auth/services/ports/repositories/email_outbox_repository.hpp>
+#include <auth/services/ports/messaging/email_verification_sender.hpp>
+#include <auth/services/ports/security/jwt_token_provider.hpp>
+#include <auth/services/ports/security/password_hasher.hpp>
+#include <auth/services/ports/repositories/user_repository.hpp>
+#include <auth/services/ports/support/verification_code_generator.hpp>
+#include <auth/services/contracts/sign_up.hpp>
 
 namespace smirkly::auth::services::services {
     class AuthService {

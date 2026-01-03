@@ -3,7 +3,7 @@
 #include <memory>
 #include <string_view>
 
-#include <auth/services/ports/user_repository.hpp>
+#include <auth/services/ports/repositories/user_repository.hpp>
 
 USERVER_NAMESPACE_BEGIN
     namespace storages::postgres {

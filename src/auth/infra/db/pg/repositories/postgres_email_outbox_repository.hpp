@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <auth/services/ports/email_outbox_repository.hpp>
+#include <auth/services/ports/repositories/email_outbox_repository.hpp>
 
 USERVER_NAMESPACE_BEGIN
     namespace storages::postgres {

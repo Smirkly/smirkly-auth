@@ -4,7 +4,7 @@
 #include <string>
 
 #include <auth/domain/models/user.hpp>
-#include <auth/services/types/auth_tokens.hpp>
+#include <auth/services/contracts/auth_tokens.hpp>
 
 namespace smirkly::auth::services {
     struct SignInCommand {

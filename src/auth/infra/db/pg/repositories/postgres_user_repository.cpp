@@ -1,4 +1,4 @@
-#include <auth/infra/db/pg/postgres_user_repository.hpp>
+#include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
 
 #include <userver/storages/postgres/cluster.hpp>
 #include <userver/storages/postgres/io/row_types.hpp>
