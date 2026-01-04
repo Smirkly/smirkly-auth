@@ -29,7 +29,7 @@ namespace smirkly::auth::infra::db::pg {
 
         InsertOutboxImpl(
             [&](auto &&... args) {
-                pg_tx.Native().Execute(sql::kInsertEmailOutbox,
+                pg_tx.Native().Execute(sql::kEmailOutboxInsert,
                                        std::forward<decltype(args)>(args)...);
             },
             job
@@ -41,7 +41,7 @@ namespace smirkly::auth::infra::db::pg {
             [&](auto &&... args) {
                 pg_cluster_->Execute(
                     userver::storages::postgres::ClusterHostType::kMaster,
-                    sql::kInsertEmailOutbox,
+                    sql::kEmailOutboxInsert,
                     std::forward<decltype(args)>(args)...
                 );
             },
