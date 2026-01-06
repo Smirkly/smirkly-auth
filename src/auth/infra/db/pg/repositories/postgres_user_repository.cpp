@@ -5,6 +5,8 @@
 
 #include <smirkly::auth/sql_queries.hpp>
 
+#include "auth/infra/db/pg/transactions/pg_transaction.hpp"
+
 namespace smirkly::auth::infra::db::pg {
     PostgresUserRepository::PostgresUserRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster)
         : pg_cluster_(std::move(pg_cluster)) {
@@ -103,7 +105,14 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresUserRepository::SetEmailVerified(std::string_view user_id, bool verified) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "SetEmailVerified.AutoTx"
+        );
+
+        PostgresUserRepository::SetEmailVerified(tx, user_id, verified);
+
+        tx.Commit();
     }
 
 
@@ -112,7 +121,14 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresUserRepository::SetPhoneVerified(std::string_view user_id, bool verified) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "SetPhoneVerified.AutoTx"
+        );
+
+        PostgresUserRepository::SetPhoneVerified(tx, user_id, verified);
+
+        tx.Commit();
     }
 
 
@@ -120,7 +136,14 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresUserRepository::SoftDelete(std::string_view user_id) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "SoftDelete.AutoTx"
+        );
+
+        PostgresUserRepository::SoftDelete(tx, user_id);
+
+        tx.Commit();
     }
 
 
@@ -129,6 +152,13 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresUserRepository::UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "UpdatePasswordHash.AutoTx"
+        );
+
+        PostgresUserRepository::UpdatePasswordHash(tx, user_id, new_password_hash);
+
+        tx.Commit();
     }
 }

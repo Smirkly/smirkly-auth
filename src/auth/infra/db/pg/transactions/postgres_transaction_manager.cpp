@@ -19,10 +19,8 @@ namespace smirkly::auth::infra::db::pg {
             opts
         );
 
-        auto tx_ptr = std::make_unique<USERVER_NAMESPACE::storages::postgres::Transaction>(std::move(tx));
-
         return std::unique_ptr<services::ports::DbTransaction>(
-            new PgTransaction(std::move(tx_ptr))
+            new PgTransaction(std::move(tx))
         );
     }
 }

@@ -2,16 +2,10 @@
 
 #include <memory>
 
+#include <userver/storages/postgres/transaction.hpp>
+
 #include <auth/infra/db/pg/transactions/pg_transaction.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
-
-USERVER_NAMESPACE_BEGIN
-    namespace storages::postgres {
-        class Cluster;
-        using ClusterPtr = std::shared_ptr<Cluster>;
-    }
-
-USERVER_NAMESPACE_END
 
 namespace smirkly::auth::infra::db::pg {
     class PgTransactionManager final : public services::ports::TransactionManager {
