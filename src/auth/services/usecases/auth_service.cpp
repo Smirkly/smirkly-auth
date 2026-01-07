@@ -1,19 +1,21 @@
 #include <auth/services/usecases/auth_service.hpp>
 
-namespace smirkly::auth::services::services {
+namespace smirkly::auth::services::usecases {
     AuthService::AuthService(
         ports::UserRepository &user_repo,
         ports::PasswordHasher &password_hasher,
         ports::EmailVerificationSender &email_sender,
         ports::VerificationCodeGenerator &code_generator,
-        ports::EmailOutboxRepository &email_outbox_repo
+        ports::EmailOutboxRepository &email_outbox_repo,
+        ports::TransactionManager &transaction_manager
         /* dependences */
     )
         : user_repo_(user_repo),
           password_hasher_(password_hasher),
           email_sender_(email_sender),
           code_generator_(code_generator),
-          email_outbox_repo_(email_outbox_repo) {
+          email_outbox_repo_(email_outbox_repo),
+          transaction_manager_(transaction_manager) {
     }
 
     SignUpResult AuthService::SignUp(const SignUpCommand &cmd) {

@@ -6,9 +6,10 @@
 #include <auth/services/ports/security/password_hasher.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
+#include <auth/services/ports/uow/transaction_manager.hpp>
 #include <auth/services/contracts/sign_up.hpp>
 
-namespace smirkly::auth::services::services {
+namespace smirkly::auth::services::usecases {
     class AuthService {
     public:
         AuthService(
@@ -16,7 +17,8 @@ namespace smirkly::auth::services::services {
             ports::PasswordHasher &password_hasher,
             ports::EmailVerificationSender &email_sender,
             ports::VerificationCodeGenerator &code_generator,
-            ports::EmailOutboxRepository &email_outbox_repo
+            ports::EmailOutboxRepository &email_outbox_repo,
+            ports::TransactionManager &transaction_manager
             /* dependences */);
 
         SignUpResult SignUp(const SignUpCommand &cmd);
@@ -27,5 +29,6 @@ namespace smirkly::auth::services::services {
         ports::EmailVerificationSender &email_sender_;
         ports::VerificationCodeGenerator &code_generator_;
         ports::EmailOutboxRepository &email_outbox_repo_;
+        ports::TransactionManager &transaction_manager_;
     };
 }

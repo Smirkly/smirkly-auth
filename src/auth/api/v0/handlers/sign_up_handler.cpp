@@ -12,7 +12,7 @@ namespace smirkly::auth::api::v0::handlers {
     SignUpHandler::SignUpHandler(const userver::components::ComponentConfig &config,
                                  const userver::components::ComponentContext &context) : HttpHandlerJsonBase(
             config, context),
-        auth_service_(context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetService()) {
+        auth_service_(context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetAuthService()) {
     }
 
     SignUpHandler::Value SignUpHandler::HandleRequestJsonThrow(

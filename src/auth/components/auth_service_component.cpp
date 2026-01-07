@@ -4,28 +4,43 @@
 #include <userver/storages/postgres/component.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
+#include <auth/infra/db/pg/repositories/postgres_email_outbox_repository.hpp>
+#include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
+#include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
+#include <auth/infra/providers/email/log_email_verification_sender.hpp>
+#include <auth/infra/security/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/random_verification_code_generator.hpp>
+#include <auth/services/usecases/auth_service.hpp>
+
 namespace smirkly::auth::components {
+    struct AuthServiceComponent::Impl {
+        infra::db::pg::PostgresEmailOutboxRepository email_outbox_repo;
+        infra::db::pg::PostgresUserRepository user_repo;
+        infra::db::pg::PgTransactionManager transaction_manager;
+        infra::providers::email::EmailVerificationSender email_sender;
+        infra::security::BcryptPasswordHasher password_hasher;
+        infra::security::RandomVerificationCodeGenerator code_generator;
+        services::usecases::AuthService auth_service;
+
+        Impl(const userver::components::ComponentContext &ctx)
+            : email_outbox_repo(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
+              , user_repo(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
+              , transaction_manager(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
+              , email_sender()
+              , password_hasher()
+              , code_generator(6)
+              , auth_service(user_repo, password_hasher, email_sender, code_generator, email_outbox_repo, transaction_manager) {
+        }
+    };
+
     AuthServiceComponent::AuthServiceComponent(
         const userver::components::ComponentConfig &cfg,
         const userver::components::ComponentContext &ctx)
         : userver::components::LoggableComponentBase(cfg, ctx),
-          email_outbox_repo_(
-              ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster()
-          ),
-          user_repo_(
-              ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster()
-          ),
-          email_sender_(/* GetLogger() */),
-          password_hasher_(),
-          code_generator_(6),
-          auth_service_(
-              user_repo_,
-              password_hasher_,
-              email_sender_,
-              code_generator_,
-              email_outbox_repo_
-              /* dependences */) {
+          impl_(std::make_unique<Impl>(ctx)) {
     }
+
+    AuthServiceComponent::~AuthServiceComponent() = default;
 
     userver::yaml_config::Schema AuthServiceComponent::GetStaticConfigSchema() {
         using userver::yaml_config::MergeSchemas;
@@ -39,7 +54,11 @@ properties: {}
 )");
     }
 
-    services::services::AuthService &AuthServiceComponent::GetService() noexcept { return auth_service_; }
+    services::usecases::AuthService &AuthServiceComponent::GetAuthService() noexcept {
+        return impl_->auth_service;
+    }
 
-    const services::services::AuthService &AuthServiceComponent::GetService() const noexcept { return auth_service_; }
+    const services::usecases::AuthService &AuthServiceComponent::GetAuthService() const noexcept {
+        return impl_->auth_service;
+    }
 }

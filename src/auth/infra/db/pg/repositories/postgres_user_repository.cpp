@@ -5,6 +5,8 @@
 
 #include <smirkly::auth/sql_queries.hpp>
 
+#include "auth/infra/db/pg/transactions/pg_transaction.hpp"
+
 namespace smirkly::auth::infra::db::pg {
     PostgresUserRepository::PostgresUserRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster)
         : pg_cluster_(std::move(pg_cluster)) {
@@ -54,6 +56,12 @@ namespace smirkly::auth::infra::db::pg {
         return {};
     }
 
+
+    domain::models::User PostgresUserRepository::Insert(services::ports::DbTransaction &tx,
+                                                        const services::ports::NewUserData &data) {
+        return {};
+    }
+
     domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
         try {
             const auto res = pg_cluster_->Execute(
@@ -91,19 +99,66 @@ namespace smirkly::auth::infra::db::pg {
         }
     }
 
+
+    void PostgresUserRepository::SetEmailVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+                                                  bool verified) {
+    }
+
     void PostgresUserRepository::SetEmailVerified(std::string_view user_id, bool verified) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "PostgresUserRepository::SetEmailVerified.AutoTx"
+        );
+
+        PostgresUserRepository::SetEmailVerified(tx, user_id, verified);
+
+        tx.Commit();
+    }
+
+
+    void PostgresUserRepository::SetPhoneVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+                                                  bool verified) {
     }
 
     void PostgresUserRepository::SetPhoneVerified(std::string_view user_id, bool verified) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "PostgresUserRepository::SetPhoneVerified.AutoTx"
+        );
+
+        PostgresUserRepository::SetPhoneVerified(tx, user_id, verified);
+
+        tx.Commit();
+    }
+
+
+    void PostgresUserRepository::SoftDelete(services::ports::DbTransaction &tx, std::string_view user_id) {
     }
 
     void PostgresUserRepository::SoftDelete(std::string_view user_id) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "PostgresUserRepository::SoftDelete.AutoTx"
+        );
+
+        PostgresUserRepository::SoftDelete(tx, user_id);
+
+        tx.Commit();
+    }
+
+
+    void PostgresUserRepository::UpdatePasswordHash(services::ports::DbTransaction &tx, std::string_view user_id,
+                                                    std::string_view new_password_hash) {
     }
 
     void PostgresUserRepository::UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) {
-        return;
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "PostgresUserRepository::UpdatePasswordHash.AutoTx"
+        );
+
+        PostgresUserRepository::UpdatePasswordHash(tx, user_id, new_password_hash);
+
+        tx.Commit();
     }
 }
