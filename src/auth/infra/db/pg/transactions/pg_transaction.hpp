@@ -29,6 +29,10 @@ namespace smirkly::auth::infra::db::pg {
 
         void Commit() override;
 
+        USERVER_NAMESPACE::storages::postgres::Transaction &Native() noexcept;
+
+        const USERVER_NAMESPACE::storages::postgres::Transaction &Native() const noexcept;
+
     public:
         static PgTransaction Begin(
             userver::storages::postgres::ClusterPtr pg_cluster, std::string name,

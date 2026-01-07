@@ -11,13 +11,6 @@
 
 
 namespace smirkly::auth::infra::db::pg {
-    namespace {
-        template<typename ExecFn>
-        void InsertOutboxImpl(ExecFn &&exec, const services::ports::EnqueueVerificationEmail &job) {
-            exec(job.to_email, job.code, job.locale, job.correlation_id);
-        }
-    }
-
     PostgresEmailOutboxRepository::PostgresEmailOutboxRepository(
         USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster)
         : pg_cluster_(std::move(pg_cluster)) {
@@ -27,25 +20,23 @@ namespace smirkly::auth::infra::db::pg {
                                                const services::ports::EnqueueVerificationEmail &job) {
         auto &pg_tx = AsPgTx(tx, "PostgresEmailOutboxRepository::Insert");
 
-        InsertOutboxImpl(
-            [&](auto &&... args) {
-                pg_tx.Native().Execute(sql::kEmailOutboxInsert,
-                                       std::forward<decltype(args)>(args)...);
-            },
-            job
+        pg_tx.Native().Execute(
+            sql::kEmailOutboxInsert,
+            job.to_email,
+            job.code,
+            job.locale,
+            job.correlation_id
         );
     }
 
     void PostgresEmailOutboxRepository::Insert(const services::ports::EnqueueVerificationEmail &job) {
-        InsertOutboxImpl(
-            [&](auto &&... args) {
-                pg_cluster_->Execute(
-                    userver::storages::postgres::ClusterHostType::kMaster,
-                    sql::kEmailOutboxInsert,
-                    std::forward<decltype(args)>(args)...
-                );
-            },
-            job
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "PostgresEmailOutboxRepository::Insert.AutoTx"
         );
+
+        PostgresEmailOutboxRepository::Insert(tx, job);
+
+        tx.Commit();
     }
 }

@@ -107,7 +107,7 @@ namespace smirkly::auth::infra::db::pg {
     void PostgresUserRepository::SetEmailVerified(std::string_view user_id, bool verified) {
         auto tx = PgTransaction::Begin(
             pg_cluster_,
-            "SetEmailVerified.AutoTx"
+            "PostgresUserRepository::SetEmailVerified.AutoTx"
         );
 
         PostgresUserRepository::SetEmailVerified(tx, user_id, verified);
@@ -123,7 +123,7 @@ namespace smirkly::auth::infra::db::pg {
     void PostgresUserRepository::SetPhoneVerified(std::string_view user_id, bool verified) {
         auto tx = PgTransaction::Begin(
             pg_cluster_,
-            "SetPhoneVerified.AutoTx"
+            "PostgresUserRepository::SetPhoneVerified.AutoTx"
         );
 
         PostgresUserRepository::SetPhoneVerified(tx, user_id, verified);
@@ -138,7 +138,7 @@ namespace smirkly::auth::infra::db::pg {
     void PostgresUserRepository::SoftDelete(std::string_view user_id) {
         auto tx = PgTransaction::Begin(
             pg_cluster_,
-            "SoftDelete.AutoTx"
+            "PostgresUserRepository::SoftDelete.AutoTx"
         );
 
         PostgresUserRepository::SoftDelete(tx, user_id);
@@ -154,7 +154,7 @@ namespace smirkly::auth::infra::db::pg {
     void PostgresUserRepository::UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) {
         auto tx = PgTransaction::Begin(
             pg_cluster_,
-            "UpdatePasswordHash.AutoTx"
+            "PostgresUserRepository::UpdatePasswordHash.AutoTx"
         );
 
         PostgresUserRepository::UpdatePasswordHash(tx, user_id, new_password_hash);

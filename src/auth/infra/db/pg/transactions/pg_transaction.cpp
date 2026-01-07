@@ -21,6 +21,14 @@ namespace smirkly::auth::infra::db::pg {
         committed_ = true;
     }
 
+    USERVER_NAMESPACE::storages::postgres::Transaction &PgTransaction::Native() noexcept {
+        return tx_;
+    }
+
+    const USERVER_NAMESPACE::storages::postgres::Transaction &PgTransaction::Native() const noexcept {
+        return tx_;
+    }
+
     PgTransaction PgTransaction::Begin(
         userver::storages::postgres::ClusterPtr pg_cluster, std::string name,
         userver::storages::postgres::ClusterHostType host_type,
