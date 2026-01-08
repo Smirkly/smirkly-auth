@@ -1,17 +1,24 @@
 # smirkly-auth
 
-Authorization microservice built with the [userver framework](https://github.com/userver-framework/userver).
+[![Status](https://img.shields.io/badge/status-active--development-orange)](#)
+[![Framework](https://img.shields.io/badge/built--with-userver-blue)](https://github.com/userver-framework/userver)
 
-The service is responsible for:
+Authentication microservice for the Smirkly platform, built with the [userver framework](https://github.com/userver-framework/userver).
 
-- user registration (email + password)
-- sign-in / issuing `{access_token, refresh_token}`
-- session and device management (work in progress)
-- password change and logout (work in progress)
+## Scope
 
-> ⚠️ **Status: active development**  
-> APIs, configuration and internal structure may change without backward compatibility guarantees.
+Implemented:
+- User registration (email + password) with persistence in Postgres
+- Sign-in issuing `{access_token, refresh_token}` (JWT)
+- Email verification flow: verification code generation and enqueueing email into outbox
 
+Work in progress:
+- Session/device model and refresh-token lifecycle (storage/rotation/revocation)
+- Logout and token invalidation
+- Password change / reset flows
+
+
+> Status: active development. APIs, configuration, and internal structure may change without backward compatibility guarantees.
 ---
 
 ## Download and Build
