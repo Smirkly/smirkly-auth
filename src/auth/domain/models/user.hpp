@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <optional>
 #include <string>
 
@@ -13,5 +14,9 @@ namespace smirkly::auth::domain::models {
 
         bool is_email_verified = false;
         bool is_phone_verified = false;
+
+        std::chrono::system_clock::time_point created_at;
+        std::chrono::system_clock::time_point password_updated_at;
+        std::optional<std::chrono::system_clock::time_point> deleted_at;
     };
 }

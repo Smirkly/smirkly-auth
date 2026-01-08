@@ -1,0 +1,1 @@
+#include <auth/infra/workers/email_outbox_processor.hpp>

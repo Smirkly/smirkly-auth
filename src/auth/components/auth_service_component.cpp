@@ -8,8 +8,8 @@
 #include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
 #include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
 #include <auth/infra/providers/email/log_email_verification_sender.hpp>
-#include <auth/infra/security/bcrypt_password_hasher.hpp>
-#include <auth/infra/security/random_verification_code_generator.hpp>
+#include <auth/infra/security/password/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/verification/random_verification_code_generator.hpp>
 #include <auth/services/usecases/auth_service.hpp>
 
 namespace smirkly::auth::components {

@@ -1,0 +1,1 @@
+#include <auth/infra/messaging/smtp_email_sender.hpp>

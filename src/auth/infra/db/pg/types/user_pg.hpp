@@ -4,9 +4,11 @@
 #include <optional>
 #include <string>
 
-#include <auth/domain/models/user.hpp>
+#include <userver/storages/postgres/io/chrono.hpp>
 
 namespace smirkly::auth::infra::db::pg::types {
+    namespace pg = USERVER_NAMESPACE::storages::postgres;
+
     struct UserPg {
         std::string id;
         std::string username;
@@ -15,8 +17,8 @@ namespace smirkly::auth::infra::db::pg::types {
         std::string password_hash;
         bool is_email_verified;
         bool is_phone_verified;
-        std::chrono::system_clock::time_point created_at;
-        std::chrono::system_clock::time_point password_updated_at;
-        std::optional<std::chrono::system_clock::time_point> deleted_at;
+        pg::TimePointTz created_at;
+        pg::TimePointTz password_updated_at;
+        std::optional<pg::TimePointTz> deleted_at;
     };
 }
