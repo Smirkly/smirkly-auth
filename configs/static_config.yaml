@@ -23,7 +23,15 @@ components_manager:
         #    secdist_alias: auth-redis
 
         auth-service:
-        # здесь пока пусто, если компоненту не нужны опции
+            smtp:
+                host: $AUTH_SMTP_HOST
+                port: $AUTH_SMTP_PORT
+                tls_mode: $AUTH_SMTP_TLS_MODE
+                username: $AUTH_SMTP_USERNAME
+                app_password: $AUTH_SMTP_APP_PASSWORD
+                from_email: $AUTH_SMTP_FROM_EMAIL
+                from_name: $AUTH_SMTP_FROM_NAME
+
 
         server:
             listener:                 # configuring the main listening socket...
