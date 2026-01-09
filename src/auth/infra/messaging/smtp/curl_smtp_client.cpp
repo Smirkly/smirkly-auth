@@ -100,7 +100,6 @@ namespace smirkly::auth::infra::messaging::smtp {
                     return r;
 
                 case CURLE_SSL_CONNECT_ERROR:
-                case CURLE_PEER_FAILED_VERIFICATION:
                 case CURLE_SSL_CACERT:
                 case CURLE_SSL_CACERT_BADFILE:
                 case CURLE_USE_SSL_FAILED:
