@@ -1,6 +1,6 @@
 #include <userver/utest/utest.hpp>
 
-#include <../../../../src/auth/infra/security/password/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/password/bcrypt_password_hasher.hpp>
 
 namespace {
     using smirkly::auth::infra::security::BcryptPasswordHasher;
