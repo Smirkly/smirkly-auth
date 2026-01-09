@@ -3,6 +3,7 @@ project(smirkly-auth CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadUserver)
+include(DownloadLibcurl)
 
 set(USERVER_PYTHON "/opt/homebrew/bin/python3.12"
         CACHE FILEPATH "Python for userver venvs")
@@ -20,6 +21,11 @@ if (NOT userver_FOUND)
     # Tries TRY_DIR first, falls back to downloading userver from GitHub using CPM.
     download_userver(TRY_DIR third_party/userver)
 endif ()
+
+find_package(CURL QUIET)
+if (NOT CURL_FOUND)
+    download_libcurl(TRY_DIR third_party/libcurl)
+endif()
 
 userver_setup_environment()
 
@@ -67,6 +73,7 @@ target_link_libraries(
         ${PROJECT_NAME}_sql
         userver::redis
         bcrypt
+        CURL::libcurl
 )
 
 
