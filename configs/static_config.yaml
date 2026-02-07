@@ -22,7 +22,22 @@ components_manager:
         #    thread-pool-size: 4
         #    secdist_alias: auth-redis
 
-        auth-service:
+        auth-infra:
+            postgres-component: postgres-auth
+
+        email-outbox-worker:
+            enabled: true
+            task_processor: main-task-processor
+
+            poll_interval_ms: 1000
+            batch_size: 20
+
+            max_attempts: 10
+            stuck_timeout_seconds: 300
+
+            retry_base_delay_seconds: 2
+            retry_max_delay_seconds: 600
+
             smtp:
                 host: $AUTH_SMTP_HOST
                 port: $AUTH_SMTP_PORT
@@ -31,6 +46,18 @@ components_manager:
                 app_password: $AUTH_SMTP_APP_PASSWORD
                 from_email: $AUTH_SMTP_FROM_EMAIL
                 from_name: $AUTH_SMTP_FROM_NAME
+                connect_timeout_ms: 20000
+                timeout_ms: 30000
+
+        auth-service:
+            #smtp:
+            #    host: $AUTH_SMTP_HOST
+            #    port: $AUTH_SMTP_PORT
+            #    tls_mode: $AUTH_SMTP_TLS_MODE
+            #    username: $AUTH_SMTP_USERNAME
+            #    app_password: $AUTH_SMTP_APP_PASSWORD
+            #    from_email: $AUTH_SMTP_FROM_EMAIL
+            #    from_name: $AUTH_SMTP_FROM_NAME
 
 
         server:
