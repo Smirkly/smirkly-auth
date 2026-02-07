@@ -39,4 +39,39 @@ namespace smirkly::auth::infra::db::pg {
 
         tx.Commit();
     }
+
+    std::vector<services::ports::EmailOutboxEntry> PostgresEmailOutboxRepository::ClaimBatch(
+        services::ports::DbTransaction &tx,
+        std::size_t next_attempt,
+        std::chrono::system_clock::time_point now,
+        std::chrono::seconds stuck_timeout,
+        std::size_t max_attempts
+    ) {
+        return std::vector<services::ports::EmailOutboxEntry>();
+    }
+
+    void PostgresEmailOutboxRepository::MarkSent(
+        services::ports::DbTransaction &tx,
+        std::int64_t id,
+        std::chrono::system_clock::time_point now,
+        std::string_view last_error
+    ) {
+    }
+
+    void PostgresEmailOutboxRepository::Reschedule(
+        services::ports::DbTransaction &tx,
+        std::int64_t id,
+        std::size_t next_attempt,
+        std::chrono::system_clock::time_point next_at,
+        std::string_view last_error
+    ) {
+    }
+
+    void PostgresEmailOutboxRepository::MarkDead(
+        services::ports::DbTransaction &tx,
+        std::int64_t id,
+        std::chrono::system_clock::time_point now,
+        std::string_view last_error
+    ) {
+    }
 }

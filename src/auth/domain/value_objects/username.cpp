@@ -1,0 +1,1 @@
+#include <auth/domain/value_objects/username.hpp>

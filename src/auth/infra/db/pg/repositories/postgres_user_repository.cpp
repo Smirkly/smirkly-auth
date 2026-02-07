@@ -3,11 +3,17 @@
 #include <userver/storages/postgres/cluster.hpp>
 #include <userver/storages/postgres/io/row_types.hpp>
 
+#include <auth/infra/db/pg/mappers/user_mapper.hpp>
+#include <auth/infra/db/pg/transactions/pg_transaction.hpp>
+#include <auth/infra/db/pg/transactions/pg_tx_cast.hpp>
+#include <auth/infra/db/pg/types/user_pg.hpp>
+#include <auth/services/errors/sign_up_errors.hpp>
 #include <smirkly::auth/sql_queries.hpp>
 
-#include "auth/infra/db/pg/transactions/pg_transaction.hpp"
 
 namespace smirkly::auth::infra::db::pg {
+    namespace pgsql = USERVER_NAMESPACE::storages::postgres;
+
     PostgresUserRepository::PostgresUserRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster)
         : pg_cluster_(std::move(pg_cluster)) {
     }
@@ -59,13 +65,10 @@ namespace smirkly::auth::infra::db::pg {
 
     domain::models::User PostgresUserRepository::Insert(services::ports::DbTransaction &tx,
                                                         const services::ports::NewUserData &data) {
-        return {};
-    }
-
-    domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
         try {
-            const auto res = pg_cluster_->Execute(
-                USERVER_NAMESPACE::storages::postgres::ClusterHostType::kMaster,
+            auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::Insert");
+
+            const auto res = pg_tx.Native().Execute(
                 sql::kUsersInsert,
                 data.username,
                 data.email,
@@ -73,30 +76,28 @@ namespace smirkly::auth::infra::db::pg {
                 data.password_hash
             );
 
-            using Row = std::tuple<
-                std::string,
-                std::string,
-                std::optional<std::string>,
-                std::optional<std::string>,
-                std::string,
-                bool,
-                bool>;
-
-            const auto row = res.AsSingleRow<Row>(USERVER_NAMESPACE::storages::postgres::kRowTag);
-
-            domain::models::User user;
-            user.id = std::get<0>(row);
-            user.username = std::get<1>(row);
-            user.email = std::get<2>(row);
-            user.phone = std::get<3>(row);
-            user.password = std::get<4>(row);
-            user.is_email_verified = std::get<5>(row);
-            user.is_phone_verified = std::get<6>(row);
-
-            return user;
+            const auto row = res.AsSingleRow<types::UserPg>(pgsql::kRowTag);
+            return mappers::ToDomain(row);
         } catch (const USERVER_NAMESPACE::storages::postgres::UniqueViolation &e) {
+            const auto constraint = e.GetConstraint();
+            if (constraint == "users_username_uniq") throw services::errors::UsernameTaken("username taken");
+            if (constraint == "users_email_uniq") throw services::errors::EmailTaken("email taken");
+            if (constraint == "users_phone_uniq") throw services::errors::PhoneTaken("phone taken");
             throw;
         }
+    }
+
+    domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
+        auto tx = PgTransaction::Begin(
+            pg_cluster_,
+            "PostgresUserRepository::Insert.AutoTx"
+        );
+
+        const auto user = PostgresUserRepository::Insert(tx, data);
+
+        tx.Commit();
+
+        return user;
     }
 
 

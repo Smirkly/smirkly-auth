@@ -1,7 +1,6 @@
 #pragma once
 
 #include <auth/services/ports/repositories/email_outbox_repository.hpp>
-#include <auth/services/ports/messaging/email_verification_sender.hpp>
 #include <auth/services/ports/security/jwt_token_provider.hpp>
 #include <auth/services/ports/security/password_hasher.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
@@ -13,12 +12,11 @@ namespace smirkly::auth::services::usecases {
     class AuthService {
     public:
         AuthService(
+            ports::TransactionManager &transaction_manager,
             ports::UserRepository &user_repo,
-            ports::PasswordHasher &password_hasher,
-            ports::EmailVerificationSender &email_sender,
-            ports::VerificationCodeGenerator &code_generator,
             ports::EmailOutboxRepository &email_outbox_repo,
-            ports::TransactionManager &transaction_manager
+            ports::PasswordHasher &password_hasher,
+            ports::VerificationCodeGenerator &code_generator
             /* dependences */);
 
         SignUpResult SignUp(const SignUpCommand &cmd);
@@ -26,7 +24,6 @@ namespace smirkly::auth::services::usecases {
     private:
         ports::UserRepository &user_repo_;
         ports::PasswordHasher &password_hasher_;
-        ports::EmailVerificationSender &email_sender_;
         ports::VerificationCodeGenerator &code_generator_;
         ports::EmailOutboxRepository &email_outbox_repo_;
         ports::TransactionManager &transaction_manager_;

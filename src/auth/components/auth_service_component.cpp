@@ -1,35 +1,41 @@
 #include <auth/components/auth_service_component.hpp>
 
+#include <userver/components/component_config.hpp>
 #include <userver/components/component_context.hpp>
-#include <userver/storages/postgres/component.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
-#include <auth/infra/db/pg/repositories/postgres_email_outbox_repository.hpp>
-#include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
-#include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
-#include <auth/infra/providers/email/log_email_verification_sender.hpp>
-#include <auth/infra/security/bcrypt_password_hasher.hpp>
-#include <auth/infra/security/random_verification_code_generator.hpp>
+#include <auth/components/auth_infra_component.hpp>
+#include <auth/infra/security/password/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/verification/random_verification_code_generator.hpp>
 #include <auth/services/usecases/auth_service.hpp>
 
 namespace smirkly::auth::components {
     struct AuthServiceComponent::Impl {
-        infra::db::pg::PostgresEmailOutboxRepository email_outbox_repo;
-        infra::db::pg::PostgresUserRepository user_repo;
-        infra::db::pg::PgTransactionManager transaction_manager;
-        infra::providers::email::EmailVerificationSender email_sender;
+        AuthInfraComponent &infra;
+
+        services::ports::TransactionManager &tx_manager;
+        services::ports::UserRepository &user_repo;
+        services::ports::EmailOutboxRepository &outbox_repo;
+
         infra::security::BcryptPasswordHasher password_hasher;
         infra::security::RandomVerificationCodeGenerator code_generator;
         services::usecases::AuthService auth_service;
 
-        Impl(const userver::components::ComponentContext &ctx)
-            : email_outbox_repo(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
-              , user_repo(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
-              , transaction_manager(ctx.FindComponent<userver::components::Postgres>("postgres-auth").GetCluster())
-              , email_sender()
+        Impl(const userver::components::ComponentConfig &cfg,
+             const userver::components::ComponentContext &ctx)
+            : infra(ctx.FindComponent<AuthInfraComponent>(AuthInfraComponent::kName))
+              , tx_manager(infra.GetTransactionManager())
+              , user_repo(infra.GetUserRepository())
+              , outbox_repo(infra.GetEmailOutboxRepository())
               , password_hasher()
               , code_generator(6)
-              , auth_service(user_repo, password_hasher, email_sender, code_generator, email_outbox_repo, transaction_manager) {
+              , auth_service(
+                  tx_manager,
+                  user_repo,
+                  outbox_repo,
+                  password_hasher,
+                  code_generator
+              ) {
         }
     };
 
@@ -37,10 +43,11 @@ namespace smirkly::auth::components {
         const userver::components::ComponentConfig &cfg,
         const userver::components::ComponentContext &ctx)
         : userver::components::LoggableComponentBase(cfg, ctx),
-          impl_(std::make_unique<Impl>(ctx)) {
+          impl_(std::make_unique<Impl>(cfg, ctx)) {
     }
 
     AuthServiceComponent::~AuthServiceComponent() = default;
+
 
     userver::yaml_config::Schema AuthServiceComponent::GetStaticConfigSchema() {
         using userver::yaml_config::MergeSchemas;
@@ -50,9 +57,14 @@ namespace smirkly::auth::components {
 type: object
 description: Auth service component config
 additionalProperties: false
-properties: {}
+properties:
+  verification_code_length:
+    type: integer
+    description: Verification code length
+    default: 6
 )");
     }
+
 
     services::usecases::AuthService &AuthServiceComponent::GetAuthService() noexcept {
         return impl_->auth_service;
