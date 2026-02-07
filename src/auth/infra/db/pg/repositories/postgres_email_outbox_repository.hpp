@@ -21,6 +21,36 @@ namespace smirkly::auth::infra::db::pg {
 
         void Insert(const services::ports::EnqueueVerificationEmail &job) override;
 
+        std::vector<services::ports::EmailOutboxEntry> ClaimBatch(
+            services::ports::DbTransaction &tx,
+            std::size_t next_attempt,
+            std::chrono::system_clock::time_point now,
+            std::chrono::seconds stuck_timeout,
+            std::size_t max_attempts
+        ) override;
+
+        void MarkSent(
+            services::ports::DbTransaction &tx,
+            std::int64_t id,
+            std::chrono::system_clock::time_point now,
+            std::string_view last_error = {}
+        ) override;
+
+        void Reschedule(
+            services::ports::DbTransaction &tx,
+            std::int64_t id,
+            std::size_t next_attempt,
+            std::chrono::system_clock::time_point next_at,
+            std::string_view last_error
+        ) override;
+
+        void MarkDead(
+            services::ports::DbTransaction &tx,
+            std::int64_t id,
+            std::chrono::system_clock::time_point now,
+            std::string_view last_error
+        ) override;
+
     private:
         USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster_;
     };
