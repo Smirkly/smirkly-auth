@@ -43,6 +43,7 @@ userver_add_sql_library(
         read/devices/*.sql
         read/sessions/*.sql
         read/users/*.sql
+        read/email_outbox/*.sql
         write/devices/*.sql
         write/email_outbox/*.sql
         write/sessions/*.sql

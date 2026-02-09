@@ -1,10 +1,10 @@
-#include <auth/infra/workers/email_outbox_processor.hpp>
-
 #include <algorithm>
 #include <exception>
 
+#include <userver/formats/json.hpp>
 #include <userver/logging/log.hpp>
 
+#include <auth/infra/workers/email_outbox_processor.hpp>
 #include <auth/services/ports/messaging/email_verification_sender.hpp>
 #include <auth/services/ports/repositories/email_outbox_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
@@ -79,18 +79,22 @@ namespace smirkly::auth::infra::workers {
 
         for (const auto &job: batch) {
             try {
+                const auto payload = USERVER_NAMESPACE::formats::json::FromString(job.payload_json);
+
                 services::ports::VerificationEmail msg;
                 msg.to_email = job.to_email;
-                msg.code = job.code;
+                msg.code = payload["code"].As<std::string>();
                 msg.correlation_id = job.correlation_id;
-
                 sender_.SendVerificationEmail(msg);
+                LOG_INFO() << "marked sent job_id=" << job.id;
 
                 auto tx = tx_manager_.Begin("email_outbox.mark_sent");
                 outbox_repo_.MarkSent(*tx, job.id, now);
                 tx->Commit();
             } catch (const std::exception &e) {
-                const std::size_t next_attempt = job.attempt + 1;
+                LOG_INFO() << "rescheduled/dead job_id=" << job.id;
+
+                const std::size_t next_attempt = job.attempts + 1;
 
                 try {
                     auto tx = tx_manager_.Begin("email_outbox.reschedule");
@@ -111,7 +115,7 @@ namespace smirkly::auth::infra::workers {
                 }
 
                 LOG_WARNING() << "EmailOutboxProcessor: send failed job_id=" << job.id
-                          << " attempt=" << job.attempt
+                          << " attempt=" << job.attempts
                           << " error=" << e.what();
             }
         }
