@@ -1,6 +1,7 @@
 #include <auth/services/usecases/auth_service.hpp>
 
 #include <auth/services/errors/sign_up_errors.hpp>
+#include <auth/services/errors/verify_email_errors.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
@@ -8,6 +9,7 @@ namespace smirkly::auth::services::usecases {
         ports::TransactionManager &transaction_manager,
         ports::UserRepository &user_repo,
         ports::EmailOutboxRepository &email_outbox_repo,
+        ports::EmailVerificationRepository &email_verification_repo,
         ports::PasswordHasher &password_hasher,
         ports::VerificationCodeGenerator &code_generator
         /* dependences */
@@ -16,6 +18,7 @@ namespace smirkly::auth::services::usecases {
           password_hasher_(password_hasher),
           code_generator_(code_generator),
           email_outbox_repo_(email_outbox_repo),
+          email_verification_repo_(email_verification_repo),
           transaction_manager_(transaction_manager) {
     }
 
@@ -67,10 +70,23 @@ namespace smirkly::auth::services::usecases {
 
         if (user.email) {
             const std::string correlation_id = user.id;
+            const std::string raw_code = code_generator_.Generate();
+            const std::string code_hash = password_hasher_.Hash(raw_code);
+            const auto now = std::chrono::system_clock::now();
+
+            ports::NewEmailVerificationData verification_data = {
+                .user_id = user.id,
+                .code_hash = code_hash,
+                .expires_at = now + std::chrono::minutes(15),
+                .ip = std::nullopt, // TODO: передать IP из контекста
+                .user_agent = std::nullopt // TODO: передать user_agent из контекста
+            };
+
+            email_verification_repo_.Insert(*tx, verification_data);
 
             ports::EnqueueVerificationEmail job = {
                 .to_email = *user.email,
-                .code = code_generator_.Generate(),
+                .code = raw_code,
                 .correlation_id = correlation_id,
                 .locale = "ru"
             };
@@ -81,5 +97,44 @@ namespace smirkly::auth::services::usecases {
         tx->Commit();
 
         return {std::move(user)};
+    }
+
+    void AuthService::VerifyEmail(const VerifyEmailCommand &cmd) {
+        const auto user_opt = user_repo_.FindByEmail(cmd.email);
+
+        if (!user_opt) {
+            throw errors::UserNotFound("User not found");
+        }
+
+        const auto &user = *user_opt;
+
+        if (user.is_email_verified) {
+            throw errors::AlreadyVerified("User already verified");
+        }
+
+        const auto now = std::chrono::system_clock::now();
+        const auto verification_opt = email_verification_repo_.FindActiveByUserId(user.id, now);
+
+        if (!verification_opt) {
+            throw errors::CodeExpired("Verification code expired or not found");
+        }
+
+        const auto &verification = *verification_opt;
+        const bool code_ok = password_hasher_.Verify(cmd.code, verification.code_hash);
+
+        if (!code_ok) {
+            auto tx = transaction_manager_.Begin("auth.verify_email.invalid_code");
+            email_verification_repo_.IncrementAttempts(*tx, verification.id, now);
+            tx->Commit();
+
+            throw errors::InvalidCode("Invalid verification code");
+        }
+
+        auto tx = transaction_manager_.Begin("auth.verify_email");
+
+        email_verification_repo_.MarkUsed(*tx, verification.id, now);
+        user_repo_.SetEmailVerified(*tx, user.id, true);
+
+        tx->Commit();
     }
 }

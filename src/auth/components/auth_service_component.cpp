@@ -16,6 +16,7 @@ namespace smirkly::auth::components {
         services::ports::TransactionManager &tx_manager;
         services::ports::UserRepository &user_repo;
         services::ports::EmailOutboxRepository &outbox_repo;
+        services::ports::EmailVerificationRepository &outbox_verification_repo;
 
         infra::security::BcryptPasswordHasher password_hasher;
         infra::security::RandomVerificationCodeGenerator code_generator;
@@ -27,12 +28,14 @@ namespace smirkly::auth::components {
               , tx_manager(infra.GetTransactionManager())
               , user_repo(infra.GetUserRepository())
               , outbox_repo(infra.GetEmailOutboxRepository())
+              , outbox_verification_repo(infra.GetEmailVerificationRepository())
               , password_hasher()
               , code_generator(6)
               , auth_service(
                   tx_manager,
                   user_repo,
                   outbox_repo,
+                  outbox_verification_repo,
                   password_hasher,
                   code_generator
               ) {
