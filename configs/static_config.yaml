@@ -106,3 +106,8 @@ components_manager:
             path: /auth/v0/sign-up
             method: POST
             task_processor: main-task-processor
+
+        handler-verify-email:
+            path: /auth/v0/verify-email
+            method: GET
+            task_processor: main-task-processor

@@ -29,6 +29,10 @@ endif()
 
 userver_setup_environment()
 
+set(CPP_JWT_BUILD_TESTS OFF)
+set(CPP_JWT_BUILD_EXAMPLES OFF)
+add_subdirectory(third_party/cpp-jwt)
+
 # SQL library
 
 userver_add_sql_library(
@@ -41,11 +45,13 @@ userver_add_sql_library(
         ${CMAKE_CURRENT_BINARY_DIR}
         SQL_FILES
         read/devices/*.sql
+        read/email_outbox/*.sql
+        read/email_verifications/*.sql
         read/sessions/*.sql
         read/users/*.sql
-        read/email_outbox/*.sql
         write/devices/*.sql
         write/email_outbox/*.sql
+        write/email_verifications/*.sql
         write/sessions/*.sql
         write/users/*.sql
 )
@@ -75,6 +81,7 @@ target_link_libraries(
         userver::redis
         bcrypt
         CURL::libcurl
+        cpp-jwt
 )
 
 
