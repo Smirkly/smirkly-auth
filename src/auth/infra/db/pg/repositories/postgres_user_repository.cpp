@@ -46,20 +46,64 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     std::optional<domain::models::User> PostgresUserRepository::FindById(std::string_view id) {
-        return {};
+        const auto res = pg_cluster_->Execute(
+            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            sql::kUsersSelectById,
+            id
+        );
+
+        if (res.IsEmpty()) {
+            return std::nullopt;
+        }
+
+        const auto row = res.AsSingleRow<types::UserPg>(pgsql::kRowTag);
+        return mappers::ToDomain(row);
     }
 
     std::optional<domain::models::User>
     PostgresUserRepository::FindByUsername(std::string_view username) {
-        return {};
+        const auto res = pg_cluster_->Execute(
+            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            sql::kUsersSelectByUsername,
+            username
+        );
+
+        if (res.IsEmpty()) {
+            return std::nullopt;
+        }
+
+        const auto row = res.AsSingleRow<types::UserPg>(pgsql::kRowTag);
+        return mappers::ToDomain(row);
     }
 
     std::optional<domain::models::User> PostgresUserRepository::FindByEmail(std::string_view email) {
-        return {};
+        const auto res = pg_cluster_->Execute(
+            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            sql::kUsersSelectByEmail,
+            email
+        );
+
+        if (res.IsEmpty()) {
+            return std::nullopt;
+        }
+
+        const auto row = res.AsSingleRow<types::UserPg>(pgsql::kRowTag);
+        return mappers::ToDomain(row);
     }
 
     std::optional<domain::models::User> PostgresUserRepository::FindByPhone(std::string_view phone) {
-        return {};
+        const auto res = pg_cluster_->Execute(
+            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            sql::kUsersSelectByPhone,
+            phone
+        );
+
+        if (res.IsEmpty()) {
+            return std::nullopt;
+        }
+
+        const auto row = res.AsSingleRow<types::UserPg>(pgsql::kRowTag);
+        return mappers::ToDomain(row);
     }
 
 
@@ -103,6 +147,13 @@ namespace smirkly::auth::infra::db::pg {
 
     void PostgresUserRepository::SetEmailVerified(services::ports::DbTransaction &tx, std::string_view user_id,
                                                   bool verified) {
+        auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::SetEmailVerified");
+
+        pg_tx.Native().Execute(
+            sql::kUsersSetEmailVerified,
+            user_id,
+            verified
+        );
     }
 
     void PostgresUserRepository::SetEmailVerified(std::string_view user_id, bool verified) {
@@ -119,6 +170,13 @@ namespace smirkly::auth::infra::db::pg {
 
     void PostgresUserRepository::SetPhoneVerified(services::ports::DbTransaction &tx, std::string_view user_id,
                                                   bool verified) {
+        auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::SetPhoneVerified");
+
+        pg_tx.Native().Execute(
+            sql::kUsersSetPhoneVerified,
+            user_id,
+            verified
+        );
     }
 
     void PostgresUserRepository::SetPhoneVerified(std::string_view user_id, bool verified) {
@@ -134,6 +192,12 @@ namespace smirkly::auth::infra::db::pg {
 
 
     void PostgresUserRepository::SoftDelete(services::ports::DbTransaction &tx, std::string_view user_id) {
+        auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::SoftDelete");
+
+        pg_tx.Native().Execute(
+            sql::kUsersSoftDelete,
+            user_id
+        );
     }
 
     void PostgresUserRepository::SoftDelete(std::string_view user_id) {
@@ -150,6 +214,13 @@ namespace smirkly::auth::infra::db::pg {
 
     void PostgresUserRepository::UpdatePasswordHash(services::ports::DbTransaction &tx, std::string_view user_id,
                                                     std::string_view new_password_hash) {
+        auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::UpdatePasswordHash");
+
+        pg_tx.Native().Execute(
+            sql::kUsersUpdatePasswordHash,
+            user_id,
+            new_password_hash
+        );
     }
 
     void PostgresUserRepository::UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) {
