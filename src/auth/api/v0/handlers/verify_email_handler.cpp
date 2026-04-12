@@ -50,7 +50,7 @@ namespace smirkly::auth::api::v0::handlers {
             });
         }
 
-        const auto cmd = services::VerifyEmailCommand{
+        const auto cmd = services::contracts::VerifyEmailCommand{
             .email = std::string{email},
             .code = std::string{code}
         };

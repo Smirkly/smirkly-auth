@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace smirkly::auth::services {
+namespace smirkly::auth::services::contracts {
     struct VerifyEmailCommand final {
         std::string email;
         std::string code;

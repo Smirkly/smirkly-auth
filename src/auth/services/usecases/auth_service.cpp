@@ -23,7 +23,7 @@ namespace smirkly::auth::services::usecases {
     }
 
 
-    SignUpResult AuthService::SignUp(const SignUpCommand &cmd) {
+    contracts::SignUpResult AuthService::SignUp(const contracts::SignUpCommand &cmd) {
         // TODO: убрать в sign_up_validator.сpp
         if (cmd.username.empty()) {
             throw services::errors::SignUpValidation("username is empty");
@@ -99,7 +99,7 @@ namespace smirkly::auth::services::usecases {
         return {std::move(user)};
     }
 
-    void AuthService::VerifyEmail(const VerifyEmailCommand &cmd) {
+    void AuthService::VerifyEmail(const contracts::VerifyEmailCommand &cmd) {
         const auto user_opt = user_repo_.FindByEmail(cmd.email);
 
         if (!user_opt) {

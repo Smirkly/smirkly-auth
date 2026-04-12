@@ -1,8 +1,8 @@
 #include <auth/infra/mapping/dto_mappers.hpp>
 
 namespace smirkly::auth::infra::mapping {
-    services::SignUpCommand ToDomain(const api::v0::dto::SignUpRequest &dto) {
-        services::SignUpCommand cmd;
+    services::contracts::SignUpCommand ToDomain(const api::v0::dto::SignUpRequest &dto) {
+        services::contracts::SignUpCommand cmd;
         cmd.username = dto.username;
         cmd.password = dto.password;
         cmd.phone = dto.phone;
@@ -10,7 +10,7 @@ namespace smirkly::auth::infra::mapping {
         return cmd;
     }
 
-    api::v0::dto::TokensResponse ToTokensDto(const services::SignInResult &result) {
+    api::v0::dto::TokensResponse ToTokensDto(const services::contracts::SignInResult &result) {
         api::v0::dto::TokensResponse dto;
         const auto &tokens = result.tokens;
         dto.access_token = tokens.access_token;

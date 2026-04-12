@@ -7,9 +7,9 @@
 #include <auth/services/contracts/sign_up.hpp>
 
 namespace smirkly::auth::infra::mapping {
-    services::SignUpCommand ToDomain(const api::v0::dto::SignUpRequest &dto);
+    services::contracts::SignUpCommand ToDomain(const api::v0::dto::SignUpRequest &dto);
 
-    api::v0::dto::TokensResponse ToTokensDto(const services::SignInResult &result);
+    api::v0::dto::TokensResponse ToTokensDto(const services::contracts::SignInResult &result);
 
     api::v0::dto::UserResponse ToUserDto(const domain::models::User &user);
 }

@@ -23,9 +23,9 @@ namespace smirkly::auth::services::usecases {
             ports::VerificationCodeGenerator &code_generator
             /* dependences */);
 
-        SignUpResult SignUp(const SignUpCommand &cmd);
+        contracts::SignUpResult SignUp(const contracts::SignUpCommand &cmd);
 
-        void VerifyEmail(const VerifyEmailCommand &cmd);
+        void VerifyEmail(const contracts::VerifyEmailCommand &cmd);
 
     private:
         ports::UserRepository &user_repo_;
