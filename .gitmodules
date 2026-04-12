@@ -1,3 +1,7 @@
 [submodule "third_party/libbcrypt"]
 	path = third_party/libbcrypt
 	url = https://github.com/trusch/libbcrypt
+
+[submodule "third_party/cpp-jwt"]
+	path = third_party/cpp-jwt
+	url = https://github.com/arun11299/cpp-jwt
