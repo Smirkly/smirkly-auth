@@ -11,7 +11,8 @@ namespace smirkly::auth::services::usecases {
         ports::EmailOutboxRepository &email_outbox_repo,
         ports::EmailVerificationRepository &email_verification_repo,
         ports::PasswordHasher &password_hasher,
-        ports::VerificationCodeGenerator &code_generator
+        ports::VerificationCodeGenerator &code_generator,
+        ports::security::JwtTokenProvider &token_provider
         /* dependences */
     )
         : user_repo_(user_repo),
@@ -19,7 +20,8 @@ namespace smirkly::auth::services::usecases {
           code_generator_(code_generator),
           email_outbox_repo_(email_outbox_repo),
           email_verification_repo_(email_verification_repo),
-          transaction_manager_(transaction_manager) {
+          transaction_manager_(transaction_manager),
+          token_provider_(token_provider) {
     }
 
 

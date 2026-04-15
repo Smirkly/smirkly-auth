@@ -5,6 +5,7 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <auth/components/auth_infra_component.hpp>
+#include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
 #include <auth/infra/security/password/bcrypt_password_hasher.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
 #include <auth/services/usecases/auth_service.hpp>
@@ -18,6 +19,7 @@ namespace smirkly::auth::components {
         services::ports::EmailOutboxRepository &outbox_repo;
         services::ports::EmailVerificationRepository &outbox_verification_repo;
 
+        infra::security::jwt::JwtCppTokenProvider token_provider;
         infra::security::BcryptPasswordHasher password_hasher;
         infra::security::RandomVerificationCodeGenerator code_generator;
         services::usecases::AuthService auth_service;
@@ -29,6 +31,16 @@ namespace smirkly::auth::components {
               , user_repo(infra.GetUserRepository())
               , outbox_repo(infra.GetEmailOutboxRepository())
               , outbox_verification_repo(infra.GetEmailVerificationRepository())
+              , token_provider(infra::security::jwt::JwtConfig{
+                  .secret = cfg["jwt"]["secret"].As<std::string>(),
+                  .issuer = cfg["jwt"]["issuer"].As<std::string>(),
+                  .access_ttl = std::chrono::seconds{
+                      cfg["jwt"]["access-token-ttl-seconds"].As<std::int64_t>()
+                  },
+                  .refresh_ttl = std::chrono::seconds{
+                      cfg["jwt"]["refresh-token-ttl-seconds"].As<std::int64_t>()
+                  }
+              })
               , password_hasher()
               , code_generator(6)
               , auth_service(
@@ -37,7 +49,8 @@ namespace smirkly::auth::components {
                   outbox_repo,
                   outbox_verification_repo,
                   password_hasher,
-                  code_generator
+                  code_generator,
+                  token_provider
               ) {
         }
     };
@@ -65,6 +78,30 @@ properties:
     type: integer
     description: Verification code length
     default: 6
+  jwt:
+    type: object
+    description: JWT settings
+    additionalProperties: false
+    properties:
+      issuer:
+        type: string
+        description: JWT issuer
+      secret:
+        type: string
+        description: JWT signing secret
+      access-token-ttl-seconds:
+        type: integer
+        description: Access token TTL in seconds
+      refresh-token-ttl-seconds:
+        type: integer
+        description: Refresh token TTL in seconds
+    required:
+      - issuer
+      - secret
+      - access-token-ttl-seconds
+      - refresh-token-ttl-seconds
+required:
+  - jwt
 )");
     }
 

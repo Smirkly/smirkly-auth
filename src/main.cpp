@@ -16,6 +16,8 @@
 #include <auth/components/auth_service_component.hpp>
 #include <auth/components/email_outbox_worker_component.hpp>
 
+#include "auth/api/v0/handlers/sign_in_handler.hpp"
+
 int main(int argc, char *argv[]) {
     auto components =
             userver::components::MinimalServerComponentList()
@@ -29,7 +31,8 @@ int main(int argc, char *argv[]) {
             .Append<smirkly::auth::components::EmailOutboxWorkerComponent>()
             .Append<smirkly::auth::components::AuthServiceComponent>()
             .Append<smirkly::auth::api::v0::handlers::SignUpHandler>()
-            .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>();
+            .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>()
+            .Append<smirkly::auth::api::v0::handlers::SignInHandler>();
 
     return userver::utils::DaemonMain(argc, argv, components);
 }
