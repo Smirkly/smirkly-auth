@@ -8,6 +8,7 @@
 
 namespace smirkly::auth::services::ports {
     class EmailOutboxRepository;
+    class EmailVerificationRepository;
     class UserRepository;
     class TransactionManager;
 }
@@ -33,6 +34,11 @@ namespace smirkly::auth::components {
         services::ports::EmailOutboxRepository &GetEmailOutboxRepository() noexcept;
 
         const services::ports::EmailOutboxRepository &GetEmailOutboxRepository() const noexcept;
+
+
+        services::ports::EmailVerificationRepository &GetEmailVerificationRepository() noexcept;
+
+        const services::ports::EmailVerificationRepository &GetEmailVerificationRepository() const noexcept;
 
 
         services::ports::TransactionManager &GetTransactionManager() noexcept;

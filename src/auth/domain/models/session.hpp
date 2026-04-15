@@ -16,6 +16,8 @@ namespace smirkly::auth::domain::models {
         std::optional<std::chrono::system_clock::time_point> last_used_at;
         std::chrono::system_clock::time_point expires_at;
         std::optional<std::chrono::system_clock::time_point> revoked_at;
+        std::string token_family_id;
+        std::optional<std::string> replaced_by_session_id;
         bool is_active = false;
     };
 }

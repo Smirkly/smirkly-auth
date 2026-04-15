@@ -50,15 +50,11 @@ components_manager:
                 timeout_ms: 30000
 
         auth-service:
-            #smtp:
-            #    host: $AUTH_SMTP_HOST
-            #    port: $AUTH_SMTP_PORT
-            #    tls_mode: $AUTH_SMTP_TLS_MODE
-            #    username: $AUTH_SMTP_USERNAME
-            #    app_password: $AUTH_SMTP_APP_PASSWORD
-            #    from_email: $AUTH_SMTP_FROM_EMAIL
-            #    from_name: $AUTH_SMTP_FROM_NAME
-
+            jwt:
+                issuer: smirkly-auth
+                access-token-ttl-seconds: 900
+                refresh-token-ttl-seconds: 2592000
+                secret: $AUTH_JWT_SECRET
 
         server:
             listener:                 # configuring the main listening socket...
@@ -104,5 +100,15 @@ components_manager:
 
         handler-auth-sign-up:
             path: /auth/v0/sign-up
+            method: POST
+            task_processor: main-task-processor
+
+        handler-verify-email:
+            path: /auth/v0/verify-email
+            method: GET
+            task_processor: main-task-processor
+
+        handler-auth-sign-in:
+            path: /auth/v0/sign-in
             method: POST
             task_processor: main-task-processor

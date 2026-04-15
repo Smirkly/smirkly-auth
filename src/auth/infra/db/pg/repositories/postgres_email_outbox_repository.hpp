@@ -31,14 +31,14 @@ namespace smirkly::auth::infra::db::pg {
 
         void MarkSent(
             services::ports::DbTransaction &tx,
-            std::int64_t id,
+            std::string_view id,
             std::chrono::system_clock::time_point now,
             std::string_view last_error = {}
         ) override;
 
         void Reschedule(
             services::ports::DbTransaction &tx,
-            std::int64_t id,
+            std::string_view id,
             std::size_t next_attempt,
             std::chrono::system_clock::time_point next_at,
             std::string_view last_error
@@ -46,7 +46,7 @@ namespace smirkly::auth::infra::db::pg {
 
         void MarkDead(
             services::ports::DbTransaction &tx,
-            std::int64_t id,
+            std::string_view id,
             std::chrono::system_clock::time_point now,
             std::string_view last_error
         ) override;

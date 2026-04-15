@@ -8,18 +8,24 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <auth/infra/db/pg/repositories/postgres_email_outbox_repository.hpp>
+#include <auth/infra/db/pg/repositories/postgres_email_verification_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
 #include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
 
 namespace smirkly::auth::components {
     struct AuthInfraComponent::Impl {
         infra::db::pg::PostgresEmailOutboxRepository email_outbox_repo;
+        infra::db::pg::PostgresEmailVerificationRepository email_verification_repo;
         infra::db::pg::PostgresUserRepository user_repo;
         infra::db::pg::PgTransactionManager transaction_manager;
 
         Impl(const userver::components::ComponentConfig &cfg,
              const userver::components::ComponentContext &ctx)
             : email_outbox_repo(
+                  ctx.FindComponent<userver::components::Postgres>(
+                      cfg["postgres-component"].As<std::string>("postgres-auth"))
+                  .GetCluster())
+              , email_verification_repo(
                   ctx.FindComponent<userver::components::Postgres>(
                       cfg["postgres-component"].As<std::string>("postgres-auth"))
                   .GetCluster())
@@ -73,6 +79,16 @@ properties:
 
     const services::ports::EmailOutboxRepository &AuthInfraComponent::GetEmailOutboxRepository() const noexcept {
         return impl_->email_outbox_repo;
+    }
+
+
+    services::ports::EmailVerificationRepository &AuthInfraComponent::GetEmailVerificationRepository() noexcept {
+        return impl_->email_verification_repo;
+    }
+
+    const services::ports::EmailVerificationRepository &
+    AuthInfraComponent::GetEmailVerificationRepository() const noexcept {
+        return impl_->email_verification_repo;
     }
 
 
