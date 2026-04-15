@@ -12,7 +12,9 @@ namespace smirkly::auth::services::usecases {
         ports::EmailVerificationRepository &email_verification_repo,
         ports::PasswordHasher &password_hasher,
         ports::VerificationCodeGenerator &code_generator,
-        ports::security::JwtTokenProvider &token_provider
+        ports::security::JwtTokenProvider &token_provider,
+        ports::DeviceRepository &device_repo,
+        ports::SessionRepository &session_repo
         /* dependences */
     )
         : user_repo_(user_repo),
@@ -21,11 +23,15 @@ namespace smirkly::auth::services::usecases {
           email_outbox_repo_(email_outbox_repo),
           email_verification_repo_(email_verification_repo),
           transaction_manager_(transaction_manager),
-          token_provider_(token_provider) {
+          token_provider_(token_provider),
+          device_repo(device_repo),
+          session_repo(session_repo) {
     }
 
 
-    contracts::SignUpResult AuthService::SignUp(const contracts::SignUpCommand &cmd) {
+    contracts::SignUpResult AuthService::SignUp(
+        const contracts::SignUpCommand &cmd,
+        const contracts::RequestMeta &meta) {
         // TODO: убрать в sign_up_validator.сpp
         if (cmd.username.empty()) {
             throw services::errors::SignUpValidation("username is empty");
@@ -80,8 +86,8 @@ namespace smirkly::auth::services::usecases {
                 .user_id = user.id,
                 .code_hash = code_hash,
                 .expires_at = now + std::chrono::minutes(15),
-                .ip = std::nullopt, // TODO: передать IP из контекста
-                .user_agent = std::nullopt // TODO: передать user_agent из контекста
+                .ip = meta.ip, // TODO: передать IP из контекста
+                .user_agent = meta.user_agent // TODO: передать user_agent из контекста
             };
 
             email_verification_repo_.Insert(*tx, verification_data);
@@ -101,7 +107,9 @@ namespace smirkly::auth::services::usecases {
         return {std::move(user)};
     }
 
-    void AuthService::VerifyEmail(const contracts::VerifyEmailCommand &cmd) {
+    void AuthService::VerifyEmail(
+        const contracts::VerifyEmailCommand &cmd,
+        const contracts::RequestMeta &meta) {
         const auto user_opt = user_repo_.FindByEmail(cmd.email);
 
         if (!user_opt) {
@@ -138,5 +146,11 @@ namespace smirkly::auth::services::usecases {
         user_repo_.SetEmailVerified(*tx, user.id, true);
 
         tx->Commit();
+    }
+
+    contracts::SignInResult AuthService::SignIn(
+        const contracts::SignInCommand &cmd,
+        const contracts::RequestMeta &meta) {
+        return {};
     }
 }

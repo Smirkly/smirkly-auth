@@ -23,7 +23,15 @@ namespace smirkly::auth::api::v0::handlers {
         const auto sign_up_dto = api::v0::dto::SignUpRequest::FromJson(body);
         auto sign_up_cmd = infra::mapping::ToDomain(sign_up_dto);
 
-        auto result = auth_service_.SignUp(sign_up_cmd);
+        const auto &user_agent_header = request.GetHeader("User-Agent");
+        services::contracts::RequestMeta meta = {
+            .ip = request.GetRemoteAddress().PrimaryAddressString(),
+            .user_agent = user_agent_header.empty()
+                              ? std::nullopt
+                              : std::make_optional<std::string>(user_agent_header)
+        };
+
+        auto result = auth_service_.SignUp(sign_up_cmd, meta);
         auto user_dto = infra::mapping::ToUserDto(result.user);
 
         userver::formats::json::ValueBuilder builder;
