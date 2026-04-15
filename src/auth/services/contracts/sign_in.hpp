@@ -17,5 +17,6 @@ namespace smirkly::auth::services::contracts {
     struct SignInResult final {
         domain::models::User user;
         AuthTokens tokens;
+        std::string session_id;
     };
 }
