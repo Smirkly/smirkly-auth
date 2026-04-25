@@ -1,5 +1,6 @@
 #include <auth/services/usecases/auth_service.hpp>
 
+#include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
@@ -86,8 +87,8 @@ namespace smirkly::auth::services::usecases {
                 .user_id = user.id,
                 .code_hash = code_hash,
                 .expires_at = now + std::chrono::minutes(15),
-                .ip = meta.ip, // TODO: передать IP из контекста
-                .user_agent = meta.user_agent // TODO: передать user_agent из контекста
+                .ip = meta.ip,
+                .user_agent = meta.user_agent
             };
 
             email_verification_repo_.Insert(*tx, verification_data);
@@ -151,6 +152,76 @@ namespace smirkly::auth::services::usecases {
     contracts::SignInResult AuthService::SignIn(
         const contracts::SignInCommand &cmd,
         const contracts::RequestMeta &meta) {
-        return {};
+        if (!cmd.username && !cmd.email && !cmd.phone) {
+            throw errors::SignInValidation("username/email/phone is required");
+        }
+
+        if (cmd.password.empty()) {
+            throw errors::SignInValidation("password is required");
+        }
+
+
+        // TODO: получить user_id по username/email/phone (сначала найти по username/email/phone, потом проверить пароль, чтобы не отдавать информацию о том, существует ли пользователь с таким username/email/phone)
+        std::optional<domain::models::User> user_opt;
+        if (cmd.username) {
+            user_opt = user_repo_.FindByUsername(*cmd.username);
+        } else if (cmd.email) {
+            user_opt = user_repo_.FindByEmail(*cmd.email);
+        } else if (cmd.phone) {
+            user_opt = user_repo_.FindByPhone(*cmd.phone);
+        }
+
+        if (!user_opt) {
+            throw errors::InvalidCredentials("invalid credentials");
+        }
+
+        const auto &user = *user_opt;
+
+        const bool password_ok = password_hasher_.Verify(cmd.password, user.password);
+        if (!password_ok) {
+            throw errors::InvalidCredentials("invalid credentials");
+        }
+
+        // TODO: нормальный генератор family id
+        const std::string token_family_id = "generated-token-family-id";
+
+        auto tokens = token_provider_.GenerateTokens(user.id);
+        auto refresh_token_hash = password_hasher_.Hash(tokens.refresh_token);
+
+        ports::NewDeviceData new_device_data = {
+            .user_id = user.id,
+            .device_type = domain::models::DeviceType::kWeb, // TODO: добавить Unknown тип
+            .device_name = std::nullopt,
+            .os_version = std::nullopt,
+            .app_version = std::nullopt,
+            .fingerprint = std::nullopt,
+        };
+
+        auto tx = transaction_manager_.Begin("auth.sign_in");
+
+        auto device = device_repo.Insert(*tx, new_device_data);
+
+        ports::NewSessionData new_session_data = {
+            .user_id = user.id,
+            .device_id = device.id,
+            .refresh_token_hash = refresh_token_hash,
+            .ip = meta.ip,
+            .user_agent = meta.user_agent,
+            .expires_at = std::chrono::system_clock::now() + std::chrono::hours(24 * 30),
+            .token_family_id = token_family_id,
+            .replaced_by_session_id = std::nullopt
+        };
+
+        domain::models::Session session = session_repo.Insert(*tx, new_session_data);
+
+        tx->Commit();
+
+        contracts::SignInResult result = {
+            .user = user,
+            .tokens = std::move(tokens),
+            .session_id = session.id
+        };
+
+        return result;
     }
 }
