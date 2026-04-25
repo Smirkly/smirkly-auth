@@ -3,6 +3,8 @@
 #include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
+#include <auth/services/factories/device_factory.hpp>
+#include <auth/services/factories/session_factory.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
@@ -183,32 +185,20 @@ namespace smirkly::auth::services::usecases {
         auto tokens = token_provider_.GenerateTokens(user.id);
         auto refresh_token_hash = password_hasher_.Hash(tokens.refresh_token);
 
-        ports::NewDeviceData new_device_data = {
-            .user_id = user.id,
-            .device_type = domain::models::DeviceType::kWeb, // TODO: add Unknown type
-            .device_name = std::nullopt,
-            .os_version = std::nullopt,
-            .app_version = std::nullopt,
-            .fingerprint = std::nullopt,
-        };
-
         auto tx = transaction_manager_.Begin("auth.sign_in");
 
+        auto new_device_data = factories::DeviceFactory::WebDevice(user.id, meta);
         auto device = device_repo.Insert(*tx, new_device_data);
 
-        ports::NewSessionData new_session_data = {
-            .user_id = user.id,
-            .device_id = device.id,
-            .refresh_token_hash = refresh_token_hash,
-            .ip = meta.ip,
-            .user_agent = meta.user_agent,
-            .expires_at = std::chrono::system_clock::now() + std::chrono::hours(24 * 30),
-            .token_family_id = token_family_id,
-            .replaced_by_session_id = std::nullopt
-        };
+        auto new_session_data = factories::SessionFactory::CreateForSignIn(
+            user.id,
+            device.id,
+            std::move(refresh_token_hash),
+            token_family_id,
+            meta
+        );
 
         domain::models::Session session = session_repo.Insert(*tx, new_session_data);
-
         tx->Commit();
 
         contracts::SignInResult result = {
