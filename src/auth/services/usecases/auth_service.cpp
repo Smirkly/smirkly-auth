@@ -33,10 +33,9 @@ namespace smirkly::auth::services::usecases {
     contracts::SignUpResult AuthService::SignUp(
         const contracts::SignUpCommand &cmd,
         const contracts::RequestMeta &meta) {
-        // TODO: убрать в sign_up_validator.сpp
+        // TODO: move syntactic sign-up validation to SignUpValidator
         if (cmd.username.empty()) {
             throw services::errors::SignUpValidation("username is empty");
-            // TODO: улучшить sign_up_errors.hpp
         }
         if (cmd.password.empty()) {
             throw services::errors::SignUpValidation("password is empty");
@@ -46,13 +45,12 @@ namespace smirkly::auth::services::usecases {
         }
 
         std::string normalized_username = cmd.username;
-        // TODO: const auto username = NormalizeUsername(cmd.username);  // trim + lower + validate
+        // TODO: normalize and validate username before uniqueness check
 
         std::optional<std::string> email;
-        // TODO: if (cmd.email) email = NormalizeEmail(*cmd.email);
         if (cmd.email) {
             email = *cmd.email;
-            // TODO: normalize+validate email (lower+trim+format)
+            // TODO: normalize email (trim + lower) and validate format before uniqueness check
         }
 
         // fast-fail
@@ -62,7 +60,6 @@ namespace smirkly::auth::services::usecases {
         if (email && user_repo_.ExistsByEmail(*email)) {
             throw errors::EmailTaken("email taken");
         }
-        // TODO: вынести в sign_up_validator.cpp и сделать 1-м запросом (добавить метод в репозиторий)
 
         const std::string password_hash = password_hasher_.Hash(cmd.password);
 
@@ -160,8 +157,6 @@ namespace smirkly::auth::services::usecases {
             throw errors::SignInValidation("password is required");
         }
 
-
-        // TODO: получить user_id по username/email/phone (сначала найти по username/email/phone, потом проверить пароль, чтобы не отдавать информацию о том, существует ли пользователь с таким username/email/phone)
         std::optional<domain::models::User> user_opt;
         if (cmd.username) {
             user_opt = user_repo_.FindByUsername(*cmd.username);
@@ -182,7 +177,7 @@ namespace smirkly::auth::services::usecases {
             throw errors::InvalidCredentials("invalid credentials");
         }
 
-        // TODO: нормальный генератор family id
+        // TODO: generate stable token family id for refresh-token rotation chain
         const std::string token_family_id = "generated-token-family-id";
 
         auto tokens = token_provider_.GenerateTokens(user.id);
@@ -190,7 +185,7 @@ namespace smirkly::auth::services::usecases {
 
         ports::NewDeviceData new_device_data = {
             .user_id = user.id,
-            .device_type = domain::models::DeviceType::kWeb, // TODO: добавить Unknown тип
+            .device_type = domain::models::DeviceType::kWeb, // TODO: add Unknown type
             .device_name = std::nullopt,
             .os_version = std::nullopt,
             .app_version = std::nullopt,
