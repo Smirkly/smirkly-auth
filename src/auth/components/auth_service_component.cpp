@@ -5,6 +5,8 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <auth/components/auth_infra_component.hpp>
+#include <auth/infra/db/pg/repositories/postgres_device_repository.hpp>
+#include <auth/infra/db/pg/repositories/postgres_session_repository.hpp>
 #include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
 #include <auth/infra/security/password/bcrypt_password_hasher.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
@@ -18,6 +20,8 @@ namespace smirkly::auth::components {
         services::ports::UserRepository &user_repo;
         services::ports::EmailOutboxRepository &outbox_repo;
         services::ports::EmailVerificationRepository &outbox_verification_repo;
+        services::ports::DeviceRepository &device_repo;
+        services::ports::SessionRepository &session_repo;
 
         infra::security::jwt::JwtCppTokenProvider token_provider;
         infra::security::BcryptPasswordHasher password_hasher;
@@ -31,6 +35,8 @@ namespace smirkly::auth::components {
               , user_repo(infra.GetUserRepository())
               , outbox_repo(infra.GetEmailOutboxRepository())
               , outbox_verification_repo(infra.GetEmailVerificationRepository())
+              , device_repo(infra.GetDeviceRepository())
+              , session_repo(infra.GetSessionRepository())
               , token_provider(infra::security::jwt::JwtConfig{
                   .secret = cfg["jwt"]["secret"].As<std::string>(),
                   .issuer = cfg["jwt"]["issuer"].As<std::string>(),
@@ -50,7 +56,9 @@ namespace smirkly::auth::components {
                   outbox_verification_repo,
                   password_hasher,
                   code_generator,
-                  token_provider
+                  token_provider,
+                  device_repo,
+                  session_repo
               ) {
         }
     };

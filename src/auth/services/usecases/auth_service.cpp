@@ -1,7 +1,10 @@
 #include <auth/services/usecases/auth_service.hpp>
 
+#include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
+#include <auth/services/factories/device_factory.hpp>
+#include <auth/services/factories/session_factory.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
@@ -12,7 +15,9 @@ namespace smirkly::auth::services::usecases {
         ports::EmailVerificationRepository &email_verification_repo,
         ports::PasswordHasher &password_hasher,
         ports::VerificationCodeGenerator &code_generator,
-        ports::security::JwtTokenProvider &token_provider
+        ports::security::JwtTokenProvider &token_provider,
+        ports::DeviceRepository &device_repo,
+        ports::SessionRepository &session_repo
         /* dependences */
     )
         : user_repo_(user_repo),
@@ -21,15 +26,18 @@ namespace smirkly::auth::services::usecases {
           email_outbox_repo_(email_outbox_repo),
           email_verification_repo_(email_verification_repo),
           transaction_manager_(transaction_manager),
-          token_provider_(token_provider) {
+          token_provider_(token_provider),
+          device_repo(device_repo),
+          session_repo(session_repo) {
     }
 
 
-    contracts::SignUpResult AuthService::SignUp(const contracts::SignUpCommand &cmd) {
-        // TODO: убрать в sign_up_validator.сpp
+    contracts::SignUpResult AuthService::SignUp(
+        const contracts::SignUpCommand &cmd,
+        const contracts::RequestMeta &meta) {
+        // TODO: move syntactic sign-up validation to SignUpValidator
         if (cmd.username.empty()) {
             throw services::errors::SignUpValidation("username is empty");
-            // TODO: улучшить sign_up_errors.hpp
         }
         if (cmd.password.empty()) {
             throw services::errors::SignUpValidation("password is empty");
@@ -39,13 +47,12 @@ namespace smirkly::auth::services::usecases {
         }
 
         std::string normalized_username = cmd.username;
-        // TODO: const auto username = NormalizeUsername(cmd.username);  // trim + lower + validate
+        // TODO: normalize and validate username before uniqueness check
 
         std::optional<std::string> email;
-        // TODO: if (cmd.email) email = NormalizeEmail(*cmd.email);
         if (cmd.email) {
             email = *cmd.email;
-            // TODO: normalize+validate email (lower+trim+format)
+            // TODO: normalize email (trim + lower) and validate format before uniqueness check
         }
 
         // fast-fail
@@ -55,7 +62,6 @@ namespace smirkly::auth::services::usecases {
         if (email && user_repo_.ExistsByEmail(*email)) {
             throw errors::EmailTaken("email taken");
         }
-        // TODO: вынести в sign_up_validator.cpp и сделать 1-м запросом (добавить метод в репозиторий)
 
         const std::string password_hash = password_hasher_.Hash(cmd.password);
 
@@ -80,8 +86,8 @@ namespace smirkly::auth::services::usecases {
                 .user_id = user.id,
                 .code_hash = code_hash,
                 .expires_at = now + std::chrono::minutes(15),
-                .ip = std::nullopt, // TODO: передать IP из контекста
-                .user_agent = std::nullopt // TODO: передать user_agent из контекста
+                .ip = meta.ip,
+                .user_agent = meta.user_agent
             };
 
             email_verification_repo_.Insert(*tx, verification_data);
@@ -101,7 +107,9 @@ namespace smirkly::auth::services::usecases {
         return {std::move(user)};
     }
 
-    void AuthService::VerifyEmail(const contracts::VerifyEmailCommand &cmd) {
+    void AuthService::VerifyEmail(
+        const contracts::VerifyEmailCommand &cmd,
+        const contracts::RequestMeta &meta) {
         const auto user_opt = user_repo_.FindByEmail(cmd.email);
 
         if (!user_opt) {
@@ -138,5 +146,67 @@ namespace smirkly::auth::services::usecases {
         user_repo_.SetEmailVerified(*tx, user.id, true);
 
         tx->Commit();
+    }
+
+    contracts::SignInResult AuthService::SignIn(
+        const contracts::SignInCommand &cmd,
+        const contracts::RequestMeta &meta) {
+        if (!cmd.username && !cmd.email && !cmd.phone) {
+            throw errors::SignInValidation("username/email/phone is required");
+        }
+
+        if (cmd.password.empty()) {
+            throw errors::SignInValidation("password is required");
+        }
+
+        std::optional<domain::models::User> user_opt;
+        if (cmd.username) {
+            user_opt = user_repo_.FindByUsername(*cmd.username);
+        } else if (cmd.email) {
+            user_opt = user_repo_.FindByEmail(*cmd.email);
+        } else if (cmd.phone) {
+            user_opt = user_repo_.FindByPhone(*cmd.phone);
+        }
+
+        if (!user_opt) {
+            throw errors::InvalidCredentials("invalid credentials");
+        }
+
+        const auto &user = *user_opt;
+
+        const bool password_ok = password_hasher_.Verify(cmd.password, user.password);
+        if (!password_ok) {
+            throw errors::InvalidCredentials("invalid credentials");
+        }
+
+        // TODO: generate stable token family id for refresh-token rotation chain
+        const std::string token_family_id = "generated-token-family-id";
+
+        auto tokens = token_provider_.GenerateTokens(user.id);
+        auto refresh_token_hash = password_hasher_.Hash(tokens.refresh_token);
+
+        auto tx = transaction_manager_.Begin("auth.sign_in");
+
+        auto new_device_data = factories::DeviceFactory::WebDevice(user.id, meta);
+        auto device = device_repo.Insert(*tx, new_device_data);
+
+        auto new_session_data = factories::SessionFactory::CreateForSignIn(
+            user.id,
+            device.id,
+            std::move(refresh_token_hash),
+            token_family_id,
+            meta
+        );
+
+        domain::models::Session session = session_repo.Insert(*tx, new_session_data);
+        tx->Commit();
+
+        contracts::SignInResult result = {
+            .user = user,
+            .tokens = std::move(tokens),
+            .session_id = session.id
+        };
+
+        return result;
     }
 }

@@ -7,13 +7,17 @@
 #include <userver/storages/postgres/component.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
+#include <auth/infra/db/pg/repositories/postgres_device_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_email_outbox_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_email_verification_repository.hpp>
+#include <auth/infra/db/pg/repositories/postgres_session_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
 #include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
 
 namespace smirkly::auth::components {
     struct AuthInfraComponent::Impl {
+        infra::db::pg::PostgresDeviceRepository device_repo;
+        infra::db::pg::PostgresSessionRepository session_repo;
         infra::db::pg::PostgresEmailOutboxRepository email_outbox_repo;
         infra::db::pg::PostgresEmailVerificationRepository email_verification_repo;
         infra::db::pg::PostgresUserRepository user_repo;
@@ -21,7 +25,15 @@ namespace smirkly::auth::components {
 
         Impl(const userver::components::ComponentConfig &cfg,
              const userver::components::ComponentContext &ctx)
-            : email_outbox_repo(
+            : device_repo(
+                  ctx.FindComponent<userver::components::Postgres>(
+                      cfg["postgres-component"].As<std::string>("postgres-auth"))
+                  .GetCluster())
+              , session_repo(
+                  ctx.FindComponent<userver::components::Postgres>(
+                      cfg["postgres-component"].As<std::string>("postgres-auth"))
+                  .GetCluster())
+              , email_outbox_repo(
                   ctx.FindComponent<userver::components::Postgres>(
                       cfg["postgres-component"].As<std::string>("postgres-auth"))
                   .GetCluster())
@@ -89,6 +101,24 @@ properties:
     const services::ports::EmailVerificationRepository &
     AuthInfraComponent::GetEmailVerificationRepository() const noexcept {
         return impl_->email_verification_repo;
+    }
+
+
+    services::ports::DeviceRepository &AuthInfraComponent::GetDeviceRepository() noexcept {
+        return impl_->device_repo;
+    }
+
+    const services::ports::DeviceRepository &AuthInfraComponent::GetDeviceRepository() const noexcept {
+        return impl_->device_repo;
+    }
+
+
+    services::ports::SessionRepository &AuthInfraComponent::GetSessionRepository() noexcept {
+        return impl_->session_repo;
+    }
+
+    const services::ports::SessionRepository &AuthInfraComponent::GetSessionRepository() const noexcept {
+        return impl_->session_repo;
     }
 
 
