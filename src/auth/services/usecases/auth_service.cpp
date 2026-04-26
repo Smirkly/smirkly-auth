@@ -4,7 +4,10 @@
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
 #include <auth/services/factories/device_factory.hpp>
+#include <auth/services/factories/email_outbox_factory.hpp>
+#include <auth/services/factories/email_verification_factory.hpp>
 #include <auth/services/factories/session_factory.hpp>
+#include <auth/services/factories/user_factory.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
@@ -65,12 +68,12 @@ namespace smirkly::auth::services::usecases {
 
         const std::string password_hash = password_hasher_.Hash(cmd.password);
 
-        ports::NewUserData new_user_data = {
-            .username = normalized_username,
-            .password_hash = password_hash,
-            .email = email,
-            .phone = cmd.phone
-        };
+        auto new_user_data = factories::UserFactory::CreateFromSignUp(
+            std::move(normalized_username),
+            password_hash,
+            std::move(email),
+            cmd.phone
+        );
 
         auto tx = transaction_manager_.Begin("auth.sign_up");
 
@@ -82,22 +85,22 @@ namespace smirkly::auth::services::usecases {
             const std::string code_hash = password_hasher_.Hash(raw_code);
             const auto now = std::chrono::system_clock::now();
 
-            ports::NewEmailVerificationData verification_data = {
-                .user_id = user.id,
-                .code_hash = code_hash,
-                .expires_at = now + std::chrono::minutes(15),
-                .ip = meta.ip,
-                .user_agent = meta.user_agent
-            };
+            auto verification_data = factories::EmailVerificationFactory::Create(
+                user.id,
+                code_hash,
+                meta,
+                now,
+                std::chrono::minutes{15}
+            );
 
             email_verification_repo_.Insert(*tx, verification_data);
 
-            ports::EnqueueVerificationEmail job = {
-                .to_email = *user.email,
-                .code = raw_code,
-                .correlation_id = correlation_id,
-                .locale = "ru"
-            };
+            auto job = factories::EmailOutboxFactory::VerificationEmail(
+                *user.email,
+                raw_code,
+                user.id,
+                "ru"
+            );
 
             email_outbox_repo_.Insert(*tx, job);
         }
