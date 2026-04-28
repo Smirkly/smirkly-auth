@@ -1,5 +1,5 @@
 SELECT
-    id,
+    id::text AS id,
     username,
     email,
     phone,

@@ -1,5 +1,5 @@
 SELECT
-    id,
+    id::text AS id,
     username,
     email,
     phone,
@@ -10,5 +10,5 @@ SELECT
     password_updated_at,
     deleted_at
 FROM users
-WHERE id = $1
+WHERE id = $1::uuid
   AND deleted_at IS NULL;

@@ -8,7 +8,7 @@ INSERT INTO devices (
     last_seen_at
 )
 VALUES (
-           $1,
+           $1::uuid,
            $2::device_type_enum,
            $3,
            $4,
