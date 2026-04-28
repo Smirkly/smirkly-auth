@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -19,15 +20,28 @@ namespace smirkly::auth::infra::security::jwt {
     public:
         explicit JwtCppTokenProvider(JwtConfig config);
 
-        [[nodiscard]] services::contracts::AuthTokens GenerateTokens(std::string_view user_id) const override;
+        [[nodiscard]] services::contracts::AuthTokens GenerateTokens(
+            std::string_view user_id,
+            std::string_view session_id,
+            std::string_view token_family_id
+        ) const override;
 
-        [[nodiscard]] std::string GenerateAccessToken(std::string_view user_id) const override;
+        [[nodiscard]] std::string GenerateAccessToken(
+            std::string_view user_id,
+            std::string_view session_id
+        ) const override;
 
-        [[nodiscard]] std::string GenerateRefreshToken(std::string_view user_id) const override;
+        [[nodiscard]] std::string GenerateRefreshToken(
+            std::string_view user_id,
+            std::string_view session_id,
+            std::string_view token_family_id
+        ) const override;
 
     private:
         [[nodiscard]] std::string GenerateToken(
             std::string_view user_id,
+            std::string_view session_id,
+            const std::optional<std::string> &token_family_id,
             std::string_view token_type,
             std::chrono::seconds ttl
         ) const;

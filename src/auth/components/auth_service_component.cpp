@@ -11,6 +11,7 @@
 #include <auth/infra/security/password/bcrypt_password_hasher.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
 #include <auth/services/usecases/auth_service.hpp>
+#include <auth/infra/ids/uuid_generator.hpp>
 
 namespace smirkly::auth::components {
     struct AuthServiceComponent::Impl {
@@ -26,6 +27,7 @@ namespace smirkly::auth::components {
         infra::security::jwt::JwtCppTokenProvider token_provider;
         infra::security::BcryptPasswordHasher password_hasher;
         infra::security::RandomVerificationCodeGenerator code_generator;
+        infra::ids::UuidGenerator uuid_generator;
         services::usecases::AuthService auth_service;
 
         Impl(const userver::components::ComponentConfig &cfg,
@@ -49,6 +51,7 @@ namespace smirkly::auth::components {
               })
               , password_hasher()
               , code_generator(6)
+              , uuid_generator(infra::ids::UuidGenerator())
               , auth_service(
                   tx_manager,
                   user_repo,
@@ -58,8 +61,8 @@ namespace smirkly::auth::components {
                   code_generator,
                   token_provider,
                   device_repo,
-                  session_repo
-              ) {
+                  session_repo,
+                  uuid_generator) {
         }
     };
 

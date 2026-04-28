@@ -1,5 +1,6 @@
 #pragma once
 
+#include <auth/services/contracts/request_meta.hpp>
 #include <auth/services/contracts/sign_in.hpp>
 #include <auth/services/contracts/sign_up.hpp>
 #include <auth/services/contracts/verify_email.hpp>
@@ -11,10 +12,9 @@
 #include <auth/services/ports/security/jwt_token_provider.hpp>
 #include <auth/services/ports/security/jwt_token_provider.hpp>
 #include <auth/services/ports/security/password_hasher.hpp>
+#include <auth/services/ports/support/id_generator.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
-
-#include "auth/services/contracts/request_meta.hpp"
 
 namespace smirkly::auth::services::usecases {
     class AuthService {
@@ -28,7 +28,8 @@ namespace smirkly::auth::services::usecases {
             ports::VerificationCodeGenerator &code_generator,
             ports::security::JwtTokenProvider &token_provider,
             ports::DeviceRepository &device_repo,
-            ports::SessionRepository &session_repo
+            ports::SessionRepository &session_repo,
+            ports::support::IdGenerator &id_generator
             /* dependences */);
 
         contracts::SignUpResult SignUp(
@@ -55,5 +56,6 @@ namespace smirkly::auth::services::usecases {
         ports::security::JwtTokenProvider &token_provider_;
         ports::PasswordHasher &password_hasher_;
         ports::VerificationCodeGenerator &code_generator_;
+        ports::support::IdGenerator &id_generator_;
     };
 }

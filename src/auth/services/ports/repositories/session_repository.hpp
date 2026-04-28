@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -9,6 +10,7 @@
 
 namespace smirkly::auth::services::ports {
     struct NewSessionData final {
+        std::string id;
         std::string user_id;
         std::optional<std::string> device_id;
         std::string refresh_token_hash;

@@ -20,7 +20,8 @@ namespace smirkly::auth::services::usecases {
         ports::VerificationCodeGenerator &code_generator,
         ports::security::JwtTokenProvider &token_provider,
         ports::DeviceRepository &device_repo,
-        ports::SessionRepository &session_repo
+        ports::SessionRepository &session_repo,
+        ports::support::IdGenerator &id_generator
         /* dependences */
     )
         : user_repo_(user_repo),
@@ -31,7 +32,8 @@ namespace smirkly::auth::services::usecases {
           transaction_manager_(transaction_manager),
           token_provider_(token_provider),
           device_repo(device_repo),
-          session_repo(session_repo) {
+          session_repo(session_repo),
+          id_generator_(id_generator) {
     }
 
 
@@ -174,7 +176,6 @@ namespace smirkly::auth::services::usecases {
         if (!user_opt) {
             throw errors::InvalidCredentials("invalid credentials");
         }
-
         const auto &user = *user_opt;
 
         const bool password_ok = password_hasher_.Verify(cmd.password, user.password);
@@ -182,10 +183,10 @@ namespace smirkly::auth::services::usecases {
             throw errors::InvalidCredentials("invalid credentials");
         }
 
-        // TODO: generate stable token family id for refresh-token rotation chain
-        const std::string token_family_id = "generated-token-family-id";
+        const std::string session_id = id_generator_.Generate();
+        const std::string token_family_id = id_generator_.Generate();
 
-        auto tokens = token_provider_.GenerateTokens(user.id);
+        auto tokens = token_provider_.GenerateTokens(user.id, session_id, token_family_id);
         auto refresh_token_hash = password_hasher_.Hash(tokens.refresh_token);
 
         auto tx = transaction_manager_.Begin("auth.sign_in");
@@ -194,6 +195,7 @@ namespace smirkly::auth::services::usecases {
         auto device = device_repo.Insert(*tx, new_device_data);
 
         auto new_session_data = factories::SessionFactory::CreateForSignIn(
+            session_id,
             user.id,
             device.id,
             std::move(refresh_token_hash),

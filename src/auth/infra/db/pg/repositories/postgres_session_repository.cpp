@@ -24,6 +24,7 @@ namespace smirkly::auth::infra::db::pg {
 
         const auto res = pg_tx.Native().Execute(
             sql::kSessionsInsert,
+            data.id,
             data.user_id,
             data.device_id,
             data.refresh_token_hash,
