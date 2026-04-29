@@ -112,3 +112,8 @@ components_manager:
             path: /auth/v0/sign-in
             method: POST
             task_processor: main-task-processor
+
+        handler-auth-refresh:
+            path: /auth/v0/refresh
+            method: POST
+            task_processor: main-task-processor

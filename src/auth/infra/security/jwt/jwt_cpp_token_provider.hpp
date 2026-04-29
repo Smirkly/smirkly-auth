@@ -37,6 +37,10 @@ namespace smirkly::auth::infra::security::jwt {
             std::string_view token_family_id
         ) const override;
 
+        [[nodiscard]] services::ports::security::RefreshTokenClaims ParseRefreshToken(
+            std::string_view refresh_token
+        ) const override;
+
     private:
         [[nodiscard]] std::string GenerateToken(
             std::string_view user_id,

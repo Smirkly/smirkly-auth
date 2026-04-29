@@ -1,5 +1,6 @@
 #include <auth/services/usecases/auth_service.hpp>
 
+#include <auth/services/errors/refresh_errors.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
@@ -209,6 +210,57 @@ namespace smirkly::auth::services::usecases {
         contracts::SignInResult result = {
             .user = user,
             .tokens = std::move(tokens),
+            .session_id = session.id
+        };
+
+        return result;
+    }
+
+
+    contracts::RefreshResult AuthService::Refresh(
+        const contracts::RefreshCommand &cmd,
+        const contracts::RequestMeta &meta) {
+        if (cmd.refresh_token.empty()) {
+            throw errors::InvalidRefreshToken("refresh token is empty");
+        }
+
+        const auto claims = token_provider_.ParseRefreshToken(cmd.refresh_token);
+
+        const auto session_opt = session_repo.FindById(claims.session_id);
+        if (!session_opt) {
+            throw errors::RefreshSessionNotFound("session not found");
+        }
+
+        const auto &session = *session_opt;
+        const auto now = std::chrono::system_clock::now();
+
+        if (session.user_id != claims.user_id) {
+            throw errors::InvalidRefreshToken("refresh token subject mismatch");
+        }
+
+        if (session.revoked_at.has_value()) {
+            throw errors::RefreshSessionRevoked("session revoked");
+        }
+
+        if (session.expires_at <= now) {
+            throw errors::RefreshSessionExpired("session expired");
+        }
+
+        const bool refresh_token_ok = password_hasher_.Verify(
+            cmd.refresh_token,
+            session.refresh_token_hash
+        );
+
+        if (!refresh_token_ok) {
+            throw errors::InvalidRefreshToken("refresh token hash mismatch");
+        }
+
+        auto tx = transaction_manager_.Begin("auth.refresh");
+        session_repo.UpdateLastUsed(*tx, session.id, now);
+        tx->Commit();
+
+        contracts::RefreshResult result = {
+            .access_token = token_provider_.GenerateAccessToken(session.user_id, session.id),
             .session_id = session.id
         };
 

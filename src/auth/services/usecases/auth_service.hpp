@@ -1,5 +1,6 @@
 #pragma once
 
+#include <auth/services/contracts/refresh.hpp>
 #include <auth/services/contracts/request_meta.hpp>
 #include <auth/services/contracts/sign_in.hpp>
 #include <auth/services/contracts/sign_up.hpp>
@@ -42,6 +43,10 @@ namespace smirkly::auth::services::usecases {
 
         contracts::SignInResult SignIn(
             const contracts::SignInCommand &cmd,
+            const contracts::RequestMeta &meta = {});
+
+        contracts::RefreshResult Refresh(
+            const contracts::RefreshCommand &cmd,
             const contracts::RequestMeta &meta = {});
 
     private:
