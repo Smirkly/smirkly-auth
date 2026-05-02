@@ -5,7 +5,7 @@
 #include <userver/logging/log.hpp>
 
 #include <auth/infra/workers/email_outbox_processor.hpp>
-#include <auth/services/ports/messaging/email_verification_sender.hpp>
+#include <auth/services/ports/notifications/email_verification_sender.hpp>
 #include <auth/services/ports/repositories/email_outbox_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/uow/db_transaction.hpp>

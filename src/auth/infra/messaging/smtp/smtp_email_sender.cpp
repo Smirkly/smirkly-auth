@@ -1,4 +1,4 @@
-#include <auth/infra/messaging/smtp_email_sender.hpp>
+#include <auth/infra/messaging/smtp/smtp_email_sender.hpp>
 
 #include <cctype>
 #include <chrono>

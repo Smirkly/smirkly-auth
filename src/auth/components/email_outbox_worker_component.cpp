@@ -14,7 +14,7 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <auth/components/auth_infra_component.hpp>
-#include <auth/infra/messaging/smtp_email_sender.hpp>
+#include <auth/infra/messaging/smtp/smtp_email_sender.hpp>
 #include <auth/infra/providers/email/log_email_verification_sender.hpp>
 #include <auth/infra/providers/email/smtp_email_verification_sender.hpp>
 #include <auth/infra/workers/email_outbox_processor.hpp>

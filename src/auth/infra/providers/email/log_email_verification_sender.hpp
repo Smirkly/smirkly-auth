@@ -1,7 +1,7 @@
 #pragma once
 
 #include <auth/domain/models/user.hpp>
-#include <auth/services/ports/messaging/email_verification_sender.hpp>
+#include <auth/services/ports/notifications/email_verification_sender.hpp>
 
 namespace smirkly::auth::infra::providers::email {
     class LogEmailVerificationSender final : public services::ports::EmailVerificationSender {
