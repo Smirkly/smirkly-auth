@@ -103,6 +103,36 @@ namespace smirkly::auth::infra::db::pg {
         return !res.IsEmpty();
     }
 
+    bool PostgresSessionRepository::RevokeAndReplace(
+        services::ports::DbTransaction &tx,
+        std::string_view session_id,
+        std::string_view replacement_session_id
+    ) {
+        auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::RevokeAndReplace");
+
+        const auto res = pg_tx.Native().Execute(
+            sql::kSessionsRevokeAndReplace,
+            session_id,
+            replacement_session_id
+        );
+
+        return !res.IsEmpty();
+    }
+
+    void PostgresSessionRepository::RevokeByTokenFamily(
+        services::ports::DbTransaction &tx,
+        std::string_view user_id,
+        std::string_view token_family_id
+    ) {
+        auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::RevokeByTokenFamily");
+
+        pg_tx.Native().Execute(
+            sql::kSessionsRevokeByTokenFamily,
+            user_id,
+            token_family_id
+        );
+    }
+
     void PostgresSessionRepository::UpdateLastUsed(
         services::ports::DbTransaction &tx,
         std::string_view session_id,

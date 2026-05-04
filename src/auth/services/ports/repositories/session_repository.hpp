@@ -43,6 +43,18 @@ namespace smirkly::auth::services::ports {
             std::string_view user_id
         ) = 0;
 
+        virtual bool RevokeAndReplace(
+            DbTransaction &tx,
+            std::string_view session_id,
+            std::string_view replacement_session_id
+        ) = 0;
+
+        virtual void RevokeByTokenFamily(
+            DbTransaction &tx,
+            std::string_view user_id,
+            std::string_view token_family_id
+        ) = 0;
+
         virtual void UpdateLastUsed(
             DbTransaction &tx,
             std::string_view session_id,
