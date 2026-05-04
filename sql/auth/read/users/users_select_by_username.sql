@@ -10,5 +10,5 @@ SELECT
     password_updated_at,
     deleted_at
 FROM users
-WHERE username = $1
+WHERE lower(username) = lower($1)
   AND deleted_at IS NULL;
