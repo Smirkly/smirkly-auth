@@ -38,6 +38,9 @@ class JwtCppTokenProvider final
   [[nodiscard]] services::ports::security::RefreshTokenClaims ParseRefreshToken(
       std::string_view refresh_token) const override;
 
+  [[nodiscard]] services::ports::security::AccessTokenClaims ParseAccessToken(
+      std::string_view access_token) const override;
+
   [[nodiscard]] const std::string& GetPublicJwksJson() const noexcept;
 
  private:

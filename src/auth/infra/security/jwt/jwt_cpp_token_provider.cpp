@@ -19,6 +19,7 @@
 #include <userver/formats/json.hpp>
 
 #include <auth/services/errors/refresh_errors.hpp>
+#include <auth/services/errors/access_token_errors.hpp>
 
 namespace smirkly::auth::infra::security::jwt {
 namespace {
@@ -248,6 +249,53 @@ JwtCppTokenProvider::ParseRefreshToken(std::string_view refresh_token) const {
     throw;
   } catch (const std::exception&) {
     throw services::errors::InvalidRefreshToken("invalid refresh token");
+  }
+}
+
+services::ports::security::AccessTokenClaims
+JwtCppTokenProvider::ParseAccessToken(std::string_view access_token) const {
+  try {
+    auto decoded = ::jwt::decode(
+        std::string(access_token), ::jwt::params::algorithms({kAlgorithm}),
+        ::jwt::params::secret(config_.public_key_pem),
+        ::jwt::params::verify(true), ::jwt::params::issuer(config_.issuer),
+        ::jwt::params::aud(config_.audience));
+
+    const auto header_json = decoded.header().create_json_obj();
+    const auto key_id =
+        header_json.at(std::string{kKeyIdHeader}).get<std::string>();
+    if (key_id != config_.key_id) {
+      throw services::errors::InvalidAccessToken("invalid access token");
+    }
+
+    const auto issuer = decoded.payload().get_claim_value<std::string>(
+        std::string{kIssuerClaim});
+    if (issuer != config_.issuer) {
+      throw services::errors::InvalidAccessToken("invalid access token");
+    }
+
+    const auto audience = decoded.payload().get_claim_value<std::string>(
+        std::string{kAudienceClaim});
+    if (audience != config_.audience) {
+      throw services::errors::InvalidAccessToken("invalid access token");
+    }
+
+    const auto token_type = decoded.payload().get_claim_value<std::string>(
+        std::string{kTokenTypeClaim});
+    if (token_type != kAccessTokenType) {
+      throw services::errors::InvalidAccessToken("invalid access token");
+    }
+
+    return {
+        .user_id = decoded.payload().get_claim_value<std::string>(
+            std::string{kSubjectClaim}),
+        .session_id = decoded.payload().get_claim_value<std::string>(
+            std::string{kSessionIdClaim}),
+    };
+  } catch (const services::errors::InvalidAccessToken&) {
+    throw;
+  } catch (const std::exception&) {
+    throw services::errors::InvalidAccessToken("invalid access token");
   }
 }
 

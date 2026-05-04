@@ -63,6 +63,8 @@ namespace smirkly::auth::infra::mapping {
         dto.username = user.username;
         dto.phone = user.phone;
         dto.email = user.email;
+        dto.is_email_verified = user.is_email_verified;
+        dto.is_phone_verified = user.is_phone_verified;
 
         return dto;
     }

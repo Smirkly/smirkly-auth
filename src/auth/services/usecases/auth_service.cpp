@@ -1,5 +1,8 @@
 #include <auth/services/usecases/auth_service.hpp>
 
+#include <chrono>
+
+#include <auth/services/errors/access_token_errors.hpp>
 #include <auth/services/errors/refresh_errors.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
@@ -261,5 +264,76 @@ namespace smirkly::auth::services::usecases {
         };
 
         return result;
+    }
+
+    contracts::AuthContext AuthService::AuthenticateAccessToken(std::string_view access_token) {
+        if (access_token.empty()) {
+            throw errors::MissingAccessToken("access token is required");
+        }
+
+        const auto claims = token_provider_.ParseAccessToken(access_token);
+        const auto session_opt = session_repo.FindById(claims.session_id);
+        if (!session_opt) {
+            throw errors::AuthSessionNotFound("session not found");
+        }
+
+        const auto &session = *session_opt;
+        if (session.user_id != claims.user_id) {
+            throw errors::InvalidAccessToken("access token subject mismatch");
+        }
+        if (session.revoked_at) {
+            throw errors::AuthSessionRevoked("session revoked");
+        }
+        if (session.expires_at <= std::chrono::system_clock::now()) {
+            throw errors::AuthSessionExpired("session expired");
+        }
+
+        const auto user_opt = user_repo_.FindById(claims.user_id);
+        if (!user_opt) {
+            throw errors::AuthUserNotFound("user not found");
+        }
+
+        return {
+            .user_id = claims.user_id,
+            .session_id = claims.session_id,
+        };
+    }
+
+    contracts::MeResult AuthService::GetMe(const contracts::AuthContext &context) {
+        const auto user_opt = user_repo_.FindById(context.user_id);
+        if (!user_opt) {
+            throw errors::AuthUserNotFound("user not found");
+        }
+
+        return {
+            .user = *user_opt,
+            .session_id = context.session_id,
+        };
+    }
+
+    contracts::SessionsResult AuthService::ListSessions(const contracts::AuthContext &context) {
+        return {
+            .sessions = session_repo.ListActiveByUserId(context.user_id),
+        };
+    }
+
+    void AuthService::RevokeSession(
+        const contracts::AuthContext &context,
+        std::string_view session_id
+    ) {
+        const auto target_session = session_repo.FindById(session_id);
+        if (!target_session) {
+            throw errors::SessionNotFound("session not found");
+        }
+        if (target_session->user_id != context.user_id) {
+            throw errors::SessionForbidden("session belongs to another user");
+        }
+        if (target_session->revoked_at) {
+            return;
+        }
+
+        auto tx = transaction_manager_.Begin("auth.sessions.revoke");
+        session_repo.RevokeByUserId(*tx, session_id, context.user_id);
+        tx->Commit();
     }
 }

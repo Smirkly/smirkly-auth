@@ -55,6 +55,26 @@ namespace smirkly::auth::infra::db::pg {
         return mappers::ToDomain(row);
     }
 
+    std::vector<domain::models::Session>
+    PostgresSessionRepository::ListActiveByUserId(std::string_view user_id) {
+        const auto res = pg_cluster_->Execute(
+            userver::storages::postgres::ClusterHostType::kSlave,
+            sql::kSessionsSelectActiveByUserId,
+            user_id
+        );
+
+        std::vector<domain::models::Session> sessions;
+        sessions.reserve(res.Size());
+
+        for (const auto &row: res) {
+            sessions.emplace_back(
+                mappers::ToDomain(row.As<types::SessionPg>(userver::storages::postgres::kRowTag))
+            );
+        }
+
+        return sessions;
+    }
+
     void PostgresSessionRepository::Revoke(
         services::ports::DbTransaction &tx,
         std::string_view session_id
@@ -65,6 +85,22 @@ namespace smirkly::auth::infra::db::pg {
             sql::kSessionsRevoke,
             session_id
         );
+    }
+
+    bool PostgresSessionRepository::RevokeByUserId(
+        services::ports::DbTransaction &tx,
+        std::string_view session_id,
+        std::string_view user_id
+    ) {
+        auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::RevokeByUserId");
+
+        const auto res = pg_tx.Native().Execute(
+            sql::kSessionsRevokeByUserId,
+            session_id,
+            user_id
+        );
+
+        return !res.IsEmpty();
     }
 
     void PostgresSessionRepository::UpdateLastUsed(

@@ -13,6 +13,11 @@ struct RefreshTokenClaims final {
   std::optional<std::string> token_family_id;
 };
 
+struct AccessTokenClaims final {
+  std::string user_id;
+  std::string session_id;
+};
+
 class JwtTokenProvider {
  public:
   virtual ~JwtTokenProvider() = default;
@@ -30,5 +35,8 @@ class JwtTokenProvider {
 
   [[nodiscard]] virtual RefreshTokenClaims ParseRefreshToken(
       std::string_view refresh_token) const = 0;
+
+  [[nodiscard]] virtual AccessTokenClaims ParseAccessToken(
+      std::string_view access_token) const = 0;
 };
 }  // namespace smirkly::auth::services::ports::security
