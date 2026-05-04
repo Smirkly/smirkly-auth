@@ -52,9 +52,12 @@ components_manager:
         auth-service:
             jwt:
                 issuer: smirkly-auth
+                audience: $AUTH_JWT_AUDIENCE
+                key-id: $AUTH_JWT_KEY_ID
                 access-token-ttl-seconds: 900
                 refresh-token-ttl-seconds: 2592000
-                secret: $AUTH_JWT_SECRET
+                private-key-path: $AUTH_JWT_PRIVATE_KEY_PATH
+                public-key-path: $AUTH_JWT_PUBLIC_KEY_PATH
 
         server:
             listener:                 # configuring the main listening socket...
