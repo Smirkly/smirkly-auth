@@ -5,6 +5,7 @@
 #include <userver/server/handlers/exceptions.hpp>
 #include <userver/server/http/http_response_cookie.hpp>
 
+#include <auth/api/v0/utils/json_error.hpp>
 #include <auth/components/auth_service_component.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
 #include <auth/services/errors/refresh_errors.hpp>
@@ -24,17 +25,14 @@ namespace smirkly::auth::api::v0::handlers {
 
     RefreshHandler::Value RefreshHandler::HandleRequestJsonThrow(
         const HttpRequest &request,
-        const Value &body,
+        const Value &,
         RequestContext &
     ) const {
         try {
             const auto refresh_token = request.GetCookie("refresh_token");
             if (refresh_token.empty()) {
-                userver::formats::json::ValueBuilder response;
-                response["message"] = "invalid refresh token";
-
                 request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-                return response.ExtractValue();
+                return utils::ErrorResponse("auth.invalid_refresh_token", "invalid refresh token");
             }
 
             const auto meta = infra::mapping::ToRequestMeta(request);
@@ -45,13 +43,13 @@ namespace smirkly::auth::api::v0::handlers {
 
             const auto result = auth_service_.Refresh(cmd, meta);
 
-            // request.GetHttpResponse().SetCookie(
-            //     userver::server::http::Cookie("refresh_token", result.tokens.refresh_token)
-            //         .SetHttpOnly()
-            //         .SetSecure()
-            //         .SetPath("/auth/v0/refresh")
-            //         .SetSameSite("Strict")
-            // );
+            request.GetHttpResponse().SetCookie(
+                userver::server::http::Cookie("refresh_token", result.refresh_token)
+                    .SetHttpOnly()
+                    .SetSecure()
+                    .SetPath("/auth/v0/refresh")
+                    .SetSameSite("Strict")
+            );
 
             userver::formats::json::ValueBuilder response;
             response["tokens"]["access_token"] = result.access_token;
@@ -59,30 +57,9 @@ namespace smirkly::auth::api::v0::handlers {
 
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
             return response.ExtractValue();
-        } catch (const services::errors::InvalidRefreshToken &) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = "invalid refresh token";
-
+        } catch (const services::errors::RefreshError &) {
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return response.ExtractValue();
-        } catch (const services::errors::RefreshSessionNotFound &) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = "invalid refresh token";
-
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return response.ExtractValue();
-        } catch (const services::errors::RefreshSessionRevoked &) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = "invalid refresh token";
-
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return response.ExtractValue();
-        } catch (const services::errors::RefreshSessionExpired &) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = "invalid refresh token";
-
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return response.ExtractValue();
+            return utils::ErrorResponse("auth.invalid_refresh_token", "invalid refresh token");
         }
     }
 }
