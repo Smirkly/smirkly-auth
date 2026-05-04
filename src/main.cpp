@@ -11,7 +11,10 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include <auth/api/v0/handlers/jwks_handler.hpp>
+#include <auth/api/v0/handlers/me_handler.hpp>
 #include <auth/api/v0/handlers/refresh_token_handler.hpp>
+#include <auth/api/v0/handlers/session_revoke_handler.hpp>
+#include <auth/api/v0/handlers/sessions_handler.hpp>
 #include <auth/api/v0/handlers/sign_in_handler.hpp>
 #include <auth/api/v0/handlers/sign_up_handler.hpp>
 #include <auth/api/v0/handlers/verify_email_handler.hpp>
@@ -36,6 +39,9 @@ int main(int argc, char *argv[]) {
             .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>()
             .Append<smirkly::auth::api::v0::handlers::SignInHandler>()
             .Append<smirkly::auth::api::v0::handlers::RefreshHandler>()
+            .Append<smirkly::auth::api::v0::handlers::MeHandler>()
+            .Append<smirkly::auth::api::v0::handlers::SessionsHandler>()
+            .Append<smirkly::auth::api::v0::handlers::SessionRevokeHandler>()
             .Append<smirkly::auth::api::v0::handlers::JwksHandler>();
 
     return userver::utils::DaemonMain(argc, argv, components);

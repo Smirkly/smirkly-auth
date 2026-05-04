@@ -121,6 +121,21 @@ components_manager:
             method: POST
             task_processor: main-task-processor
 
+        handler-auth-me:
+            path: /auth/v0/me
+            method: GET
+            task_processor: main-task-processor
+
+        handler-auth-sessions:
+            path: /auth/v0/sessions
+            method: GET
+            task_processor: main-task-processor
+
+        handler-auth-session-revoke:
+            path: /auth/v0/sessions/{session_id}
+            method: DELETE
+            task_processor: main-task-processor
+
         handler-auth-jwks:
             path: /auth/v0/.well-known/jwks.json
             method: GET
