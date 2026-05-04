@@ -10,6 +10,7 @@
 #include <userver/testsuite/testsuite_support.hpp>
 #include <userver/utils/daemon_run.hpp>
 
+#include <auth/api/v0/handlers/jwks_handler.hpp>
 #include <auth/api/v0/handlers/refresh_token_handler.hpp>
 #include <auth/api/v0/handlers/sign_in_handler.hpp>
 #include <auth/api/v0/handlers/sign_up_handler.hpp>
@@ -34,7 +35,8 @@ int main(int argc, char *argv[]) {
             .Append<smirkly::auth::api::v0::handlers::SignUpHandler>()
             .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>()
             .Append<smirkly::auth::api::v0::handlers::SignInHandler>()
-            .Append<smirkly::auth::api::v0::handlers::RefreshHandler>();
+            .Append<smirkly::auth::api::v0::handlers::RefreshHandler>()
+            .Append<smirkly::auth::api::v0::handlers::JwksHandler>();
 
     return userver::utils::DaemonMain(argc, argv, components);
 }

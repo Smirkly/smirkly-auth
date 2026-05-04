@@ -120,3 +120,8 @@ components_manager:
             path: /auth/v0/refresh
             method: POST
             task_processor: main-task-processor
+
+        handler-auth-jwks:
+            path: /auth/v0/.well-known/jwks.json
+            method: GET
+            task_processor: main-task-processor
