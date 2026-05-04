@@ -1,6 +1,7 @@
 #pragma once
 
 #include <auth/services/contracts/refresh.hpp>
+#include <auth/services/contracts/auth_context.hpp>
 #include <auth/services/contracts/request_meta.hpp>
 #include <auth/services/contracts/sign_in.hpp>
 #include <auth/services/contracts/sign_up.hpp>
@@ -49,6 +50,17 @@ namespace smirkly::auth::services::usecases {
         contracts::RefreshResult Refresh(
             const contracts::RefreshCommand &cmd,
             const contracts::RequestMeta &meta = {});
+
+        contracts::AuthContext AuthenticateAccessToken(std::string_view access_token);
+
+        contracts::MeResult GetMe(const contracts::AuthContext &context);
+
+        contracts::SessionsResult ListSessions(const contracts::AuthContext &context);
+
+        void RevokeSession(
+            const contracts::AuthContext &context,
+            std::string_view session_id
+        );
 
     private:
         ports::UserRepository &user_repo_;
