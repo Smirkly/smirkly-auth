@@ -41,41 +41,37 @@ namespace smirkly::auth::services::usecases {
     contracts::SignUpResult AuthService::SignUp(
         const contracts::SignUpCommand &cmd,
         const contracts::RequestMeta &meta) {
-        // TODO: move syntactic sign-up validation to SignUpValidator
-        if (cmd.username.empty()) {
-            throw services::errors::SignUpValidation("username is empty");
-        }
-        if (cmd.password.empty()) {
-            throw services::errors::SignUpValidation("password is empty");
-        }
-        if (cmd.email && cmd.email->empty()) {
-            throw services::errors::SignUpValidation("email is empty");
-        }
-
-        std::string normalized_username = cmd.username;
-        // TODO: normalize and validate username before uniqueness check
-
-        std::optional<std::string> email;
-        if (cmd.email) {
-            email = *cmd.email;
-            // TODO: normalize email (trim + lower) and validate format before uniqueness check
-        }
+        const auto input = sign_up_validator_.ValidateAndNormalize(cmd);
+        const auto &normalized_username = input.username.Value();
 
         // fast-fail
         if (user_repo_.ExistsByUsername(normalized_username)) {
             throw errors::UsernameTaken("username taken");
         }
-        if (email && user_repo_.ExistsByEmail(*email)) {
+        if (input.email && user_repo_.ExistsByEmail(input.email->Value())) {
             throw errors::EmailTaken("email taken");
         }
+        if (input.phone && user_repo_.ExistsByPhone(input.phone->Value())) {
+            throw errors::PhoneTaken("phone taken");
+        }
 
-        const std::string password_hash = password_hasher_.Hash(cmd.password);
+        const std::string password_hash = password_hasher_.Hash(input.password);
+
+        std::optional<std::string> email;
+        if (input.email) {
+            email = input.email->Value();
+        }
+
+        std::optional<std::string> phone;
+        if (input.phone) {
+            phone = input.phone->Value();
+        }
 
         auto new_user_data = factories::UserFactory::CreateFromSignUp(
-            std::move(normalized_username),
+            normalized_username,
             password_hash,
             std::move(email),
-            cmd.phone
+            std::move(phone)
         );
 
         auto tx = transaction_manager_.Begin("auth.sign_up");
