@@ -1,4 +1,5 @@
 #include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
+#include <auth/services/errors/access_token_errors.hpp>
 
 #include <chrono>
 #include <filesystem>
@@ -67,6 +68,32 @@ UTEST(JwtCppTokenProvider, GenerateAndParseRefreshTokenRs256) {
   EXPECT_EQ(claims.session_id, "8296d634-a545-4d34-a48b-557b246e8038");
   ASSERT_TRUE(claims.token_family_id.has_value());
   EXPECT_EQ(*claims.token_family_id, "6ac66b0e-ddc0-4116-b098-8f54d8947f58");
+}
+
+UTEST(JwtCppTokenProvider, GenerateAndParseAccessTokenRs256) {
+  auto provider = MakeProvider();
+
+  const auto access_token =
+      provider.GenerateAccessToken("7c03fcb2-88a9-482c-a6f1-a95f86210aaa",
+                                   "8296d634-a545-4d34-a48b-557b246e8038");
+
+  EXPECT_FALSE(access_token.empty());
+
+  const auto claims = provider.ParseAccessToken(access_token);
+  EXPECT_EQ(claims.user_id, "7c03fcb2-88a9-482c-a6f1-a95f86210aaa");
+  EXPECT_EQ(claims.session_id, "8296d634-a545-4d34-a48b-557b246e8038");
+}
+
+UTEST(JwtCppTokenProvider, RejectsRefreshTokenAsAccessToken) {
+  auto provider = MakeProvider();
+
+  const auto refresh_token =
+      provider.GenerateRefreshToken("7c03fcb2-88a9-482c-a6f1-a95f86210aaa",
+                                    "8296d634-a545-4d34-a48b-557b246e8038",
+                                    "6ac66b0e-ddc0-4116-b098-8f54d8947f58");
+
+  EXPECT_THROW(static_cast<void>(provider.ParseAccessToken(refresh_token)),
+               smirkly::auth::services::errors::InvalidAccessToken);
 }
 
 UTEST(JwtCppTokenProvider, PublishesPublicJwks) {
