@@ -63,6 +63,11 @@ logger-level: info
 is-testing: false
 
 server-port: 8080
+
+AUTH_JWT_AUDIENCE: smirkly-api
+AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
+AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
+AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
 ```
 
 worker-threads / worker-fs-threads – userver task processors.
@@ -72,6 +77,18 @@ logger-level – log level (trace, debug, info, warning, error…).
 server-port – HTTP port for the auth service.
 
 You may extend this file as the service evolves.
+
+Generate a local RSA key pair for JWT signing:
+
+```bash
+mkdir -p configs/secrets
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out configs/secrets/auth_jwt_private.pem
+openssl rsa -in configs/secrets/auth_jwt_private.pem -pubout -out configs/secrets/auth_jwt_public.pem
+chmod 600 configs/secrets/auth_jwt_private.pem
+```
+
+The auth service signs JWTs with the private key. Other services should fetch public keys from
+`/auth/v0/.well-known/jwks.json` and use them only to verify access tokens.
 
 ### 4. Configure and build (via Makefile)
 
