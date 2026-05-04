@@ -28,6 +28,7 @@ Testing/
 *.env.*
 config_vars.yaml
 dynamic_config.json
+configs/secrets/
 
 logs/
 *.log
