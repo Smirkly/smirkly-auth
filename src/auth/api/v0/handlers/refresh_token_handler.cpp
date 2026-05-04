@@ -49,7 +49,7 @@ namespace smirkly::auth::api::v0::handlers {
             //     userver::server::http::Cookie("refresh_token", result.tokens.refresh_token)
             //         .SetHttpOnly()
             //         .SetSecure()
-            //         .SetPath("/api/v0/auth/refresh")
+            //         .SetPath("/auth/v0/refresh")
             //         .SetSameSite("Strict")
             // );
 
