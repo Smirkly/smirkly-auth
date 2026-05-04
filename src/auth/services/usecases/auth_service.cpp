@@ -230,14 +230,31 @@ namespace smirkly::auth::services::usecases {
             throw errors::RefreshSessionNotFound("session not found");
         }
 
-        const auto &session = *session_opt;
+        const auto session = *session_opt;
         const auto now = std::chrono::system_clock::now();
 
         if (session.user_id != claims.user_id) {
             throw errors::InvalidRefreshToken("refresh token subject mismatch");
         }
 
+        if (!claims.token_family_id || *claims.token_family_id != session.token_family_id) {
+            throw errors::InvalidRefreshToken("refresh token family mismatch");
+        }
+
         if (session.revoked_at.has_value()) {
+            const bool reused_refresh_token = password_hasher_.Verify(
+                cmd.refresh_token,
+                session.refresh_token_hash
+            );
+
+            if (reused_refresh_token) {
+                auto tx = transaction_manager_.Begin("auth.refresh.reuse_detected");
+                session_repo.RevokeByTokenFamily(*tx, session.user_id, session.token_family_id);
+                tx->Commit();
+
+                throw errors::RefreshTokenReuseDetected("refresh token reuse detected");
+            }
+
             throw errors::RefreshSessionRevoked("session revoked");
         }
 
@@ -254,13 +271,37 @@ namespace smirkly::auth::services::usecases {
             throw errors::InvalidRefreshToken("refresh token hash mismatch");
         }
 
+        const std::string new_session_id = id_generator_.Generate();
+        auto tokens = token_provider_.GenerateTokens(
+            session.user_id,
+            new_session_id,
+            session.token_family_id
+        );
+        auto new_refresh_token_hash = password_hasher_.Hash(tokens.refresh_token);
+
+        auto replacement_session_data = factories::SessionFactory::CreateForRefreshRotation(
+            new_session_id,
+            session,
+            std::move(new_refresh_token_hash),
+            meta
+        );
+
         auto tx = transaction_manager_.Begin("auth.refresh");
-        session_repo.UpdateLastUsed(*tx, session.id, now);
+        const auto replacement_session = session_repo.Insert(*tx, replacement_session_data);
+        const bool old_session_revoked = session_repo.RevokeAndReplace(
+            *tx,
+            session.id,
+            replacement_session.id
+        );
+        if (!old_session_revoked) {
+            throw errors::RefreshSessionRevoked("session already rotated");
+        }
         tx->Commit();
 
         contracts::RefreshResult result = {
-            .access_token = token_provider_.GenerateAccessToken(session.user_id, session.id),
-            .session_id = session.id
+            .access_token = std::move(tokens.access_token),
+            .refresh_token = std::move(tokens.refresh_token),
+            .session_id = replacement_session.id
         };
 
         return result;
