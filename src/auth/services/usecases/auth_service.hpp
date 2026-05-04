@@ -16,6 +16,7 @@
 #include <auth/services/ports/support/id_generator.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
+#include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
     class AuthService {
@@ -62,5 +63,6 @@ namespace smirkly::auth::services::usecases {
         ports::PasswordHasher &password_hasher_;
         ports::VerificationCodeGenerator &code_generator_;
         ports::support::IdGenerator &id_generator_;
+        validation::SignUpValidator sign_up_validator_;
     };
 }
