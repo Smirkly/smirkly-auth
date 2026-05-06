@@ -13,7 +13,7 @@ namespace smirkly::auth::infra::security {
         constexpr std::string_view kDigits = "0123456789";
     }
 
-    RandomVerificationCodeGenerator::RandomVerificationCodeGenerator(std::size_t lenght) : lenght_(lenght) {
+    RandomVerificationCodeGenerator::RandomVerificationCodeGenerator(std::size_t length) : length_(length) {
     }
 
     std::string RandomVerificationCodeGenerator::Generate() {
@@ -21,9 +21,9 @@ namespace smirkly::auth::infra::security {
         std::uniform_int_distribution<std::size_t> distribution(0, kDigits.size() - 1);
 
         std::string code;
-        code.reserve(lenght_);
+        code.reserve(length_);
 
-        for (std::size_t i{0}; i < lenght_; ++i) {
+        for (std::size_t i{0}; i < length_; ++i) {
             code.push_back(kDigits[distribution(rng)]);
         }
 

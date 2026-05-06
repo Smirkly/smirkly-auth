@@ -24,7 +24,7 @@ namespace smirkly::auth::api::v0::handlers {
 
     RefreshHandler::Value RefreshHandler::HandleRequestJsonThrow(
         const HttpRequest &request,
-        const Value &body,
+        const Value &,
         RequestContext &
     ) const {
         try {

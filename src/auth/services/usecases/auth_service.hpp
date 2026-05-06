@@ -12,7 +12,6 @@
 #include <auth/services/ports/repositories/session_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/security/jwt_token_provider.hpp>
-#include <auth/services/ports/security/jwt_token_provider.hpp>
 #include <auth/services/ports/security/password_hasher.hpp>
 #include <auth/services/ports/support/id_generator.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
@@ -32,8 +31,7 @@ namespace smirkly::auth::services::usecases {
             ports::security::JwtTokenProvider &token_provider,
             ports::DeviceRepository &device_repo,
             ports::SessionRepository &session_repo,
-            ports::support::IdGenerator &id_generator
-            /* dependences */);
+            ports::support::IdGenerator &id_generator);
 
         contracts::SignUpResult SignUp(
             const contracts::SignUpCommand &cmd,
@@ -66,10 +64,8 @@ namespace smirkly::auth::services::usecases {
         ports::UserRepository &user_repo_;
         ports::EmailOutboxRepository &email_outbox_repo_;
         ports::EmailVerificationRepository &email_verification_repo_;
-        ports::DeviceRepository &device_repo;
-        ports::SessionRepository &session_repo;
-
-    private:
+        ports::DeviceRepository &device_repo_;
+        ports::SessionRepository &session_repo_;
         ports::TransactionManager &transaction_manager_;
         ports::security::JwtTokenProvider &token_provider_;
         ports::PasswordHasher &password_hasher_;

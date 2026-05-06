@@ -26,17 +26,16 @@ namespace smirkly::auth::services::usecases {
         ports::DeviceRepository &device_repo,
         ports::SessionRepository &session_repo,
         ports::support::IdGenerator &id_generator
-        /* dependences */
     )
         : user_repo_(user_repo),
-          password_hasher_(password_hasher),
-          code_generator_(code_generator),
           email_outbox_repo_(email_outbox_repo),
           email_verification_repo_(email_verification_repo),
+          device_repo_(device_repo),
+          session_repo_(session_repo),
           transaction_manager_(transaction_manager),
           token_provider_(token_provider),
-          device_repo(device_repo),
-          session_repo(session_repo),
+          password_hasher_(password_hasher),
+          code_generator_(code_generator),
           id_generator_(id_generator) {
     }
 
@@ -114,7 +113,7 @@ namespace smirkly::auth::services::usecases {
 
     void AuthService::VerifyEmail(
         const contracts::VerifyEmailCommand &cmd,
-        const contracts::RequestMeta &meta) {
+        const contracts::RequestMeta &) {
         const auto user_opt = user_repo_.FindByEmail(cmd.email);
 
         if (!user_opt) {
@@ -192,7 +191,7 @@ namespace smirkly::auth::services::usecases {
         auto tx = transaction_manager_.Begin("auth.sign_in");
 
         auto new_device_data = factories::DeviceFactory::WebDevice(user.id, meta);
-        auto device = device_repo.Insert(*tx, new_device_data);
+        auto device = device_repo_.Insert(*tx, new_device_data);
 
         auto new_session_data = factories::SessionFactory::CreateForSignIn(
             session_id,
@@ -203,7 +202,7 @@ namespace smirkly::auth::services::usecases {
             meta
         );
 
-        domain::models::Session session = session_repo.Insert(*tx, new_session_data);
+        domain::models::Session session = session_repo_.Insert(*tx, new_session_data);
         tx->Commit();
 
         contracts::SignInResult result = {
@@ -218,14 +217,14 @@ namespace smirkly::auth::services::usecases {
 
     contracts::RefreshResult AuthService::Refresh(
         const contracts::RefreshCommand &cmd,
-        const contracts::RequestMeta &meta) {
+        const contracts::RequestMeta &) {
         if (cmd.refresh_token.empty()) {
             throw errors::InvalidRefreshToken("refresh token is empty");
         }
 
         const auto claims = token_provider_.ParseRefreshToken(cmd.refresh_token);
 
-        const auto session_opt = session_repo.FindById(claims.session_id);
+        const auto session_opt = session_repo_.FindById(claims.session_id);
         if (!session_opt) {
             throw errors::RefreshSessionNotFound("session not found");
         }
@@ -255,7 +254,7 @@ namespace smirkly::auth::services::usecases {
         }
 
         auto tx = transaction_manager_.Begin("auth.refresh");
-        session_repo.UpdateLastUsed(*tx, session.id, now);
+        session_repo_.UpdateLastUsed(*tx, session.id, now);
         tx->Commit();
 
         contracts::RefreshResult result = {
@@ -272,7 +271,7 @@ namespace smirkly::auth::services::usecases {
         }
 
         const auto claims = token_provider_.ParseAccessToken(access_token);
-        const auto session_opt = session_repo.FindById(claims.session_id);
+        const auto session_opt = session_repo_.FindById(claims.session_id);
         if (!session_opt) {
             throw errors::AuthSessionNotFound("session not found");
         }
@@ -313,7 +312,7 @@ namespace smirkly::auth::services::usecases {
 
     contracts::SessionsResult AuthService::ListSessions(const contracts::AuthContext &context) {
         return {
-            .sessions = session_repo.ListActiveByUserId(context.user_id),
+            .sessions = session_repo_.ListActiveByUserId(context.user_id),
         };
     }
 
@@ -321,7 +320,7 @@ namespace smirkly::auth::services::usecases {
         const contracts::AuthContext &context,
         std::string_view session_id
     ) {
-        const auto target_session = session_repo.FindById(session_id);
+        const auto target_session = session_repo_.FindById(session_id);
         if (!target_session) {
             throw errors::SessionNotFound("session not found");
         }
@@ -333,7 +332,7 @@ namespace smirkly::auth::services::usecases {
         }
 
         auto tx = transaction_manager_.Begin("auth.sessions.revoke");
-        session_repo.RevokeByUserId(*tx, session_id, context.user_id);
+        session_repo_.RevokeByUserId(*tx, session_id, context.user_id);
         tx->Commit();
     }
 }
