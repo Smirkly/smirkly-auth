@@ -23,6 +23,11 @@ namespace smirkly::auth::services::errors {
         using RefreshError::RefreshError;
     };
 
+    class RefreshTokenReuseDetected final : public RefreshError {
+    public:
+        using RefreshError::RefreshError;
+    };
+
     class RefreshSessionExpired final : public RefreshError {
     public:
         using RefreshError::RefreshError;

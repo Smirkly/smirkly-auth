@@ -7,8 +7,9 @@ namespace smirkly::auth::api::v0::handlers {
 JwksHandler::JwksHandler(const userver::components::ComponentConfig& config,
                          const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_component_(context.FindComponent<
-                      smirkly::auth::components::AuthServiceComponent>()) {}
+      security_component_(context.FindComponent<
+                          smirkly::auth::components::AuthSecurityComponent>()) {
+}
 
 JwksHandler::Value JwksHandler::HandleRequestJsonThrow(
     const HttpRequest& request, const Value&, RequestContext&) const {
@@ -16,6 +17,6 @@ JwksHandler::Value JwksHandler::HandleRequestJsonThrow(
                                       std::string{"public, max-age=300"});
 
   return userver::formats::json::FromString(
-      auth_component_.GetPublicJwksJson());
+      security_component_.GetPublicJwksJson());
 }
 }  // namespace smirkly::auth::api::v0::handlers

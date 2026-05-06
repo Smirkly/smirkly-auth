@@ -23,4 +23,23 @@ namespace smirkly::auth::services::factories {
             .replaced_by_session_id = std::nullopt,
         };
     }
+
+    ports::NewSessionData SessionFactory::CreateForRefreshRotation(
+        std::string session_id,
+        const domain::models::Session &previous_session,
+        std::string refresh_token_hash,
+        const contracts::RequestMeta &meta
+    ) {
+        return ports::NewSessionData{
+            .id = std::move(session_id),
+            .user_id = previous_session.user_id,
+            .device_id = previous_session.device_id,
+            .refresh_token_hash = std::move(refresh_token_hash),
+            .ip = meta.ip ? meta.ip : previous_session.ip,
+            .user_agent = meta.user_agent ? meta.user_agent : previous_session.user_agent,
+            .expires_at = std::chrono::system_clock::now() + std::chrono::hours{24 * 30},
+            .token_family_id = previous_session.token_family_id,
+            .replaced_by_session_id = std::nullopt,
+        };
+    }
 }

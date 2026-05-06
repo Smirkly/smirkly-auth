@@ -25,6 +25,17 @@ components_manager:
         auth-infra:
             postgres-component: postgres-auth
 
+        auth-security:
+            verification_code_length: 6
+            jwt:
+                issuer: smirkly-auth
+                audience: $AUTH_JWT_AUDIENCE
+                key-id: $AUTH_JWT_KEY_ID
+                access-token-ttl-seconds: 900
+                refresh-token-ttl-seconds: 2592000
+                private-key-path: $AUTH_JWT_PRIVATE_KEY_PATH
+                public-key-path: $AUTH_JWT_PUBLIC_KEY_PATH
+
         email-outbox-worker:
             enabled: true
             task_processor: main-task-processor
@@ -50,14 +61,8 @@ components_manager:
                 timeout_ms: 30000
 
         auth-service:
-            jwt:
-                issuer: smirkly-auth
-                audience: $AUTH_JWT_AUDIENCE
-                key-id: $AUTH_JWT_KEY_ID
-                access-token-ttl-seconds: 900
-                refresh-token-ttl-seconds: 2592000
-                private-key-path: $AUTH_JWT_PRIVATE_KEY_PATH
-                public-key-path: $AUTH_JWT_PUBLIC_KEY_PATH
+            infra-component: auth-infra
+            security-component: auth-security
 
         server:
             listener:                 # configuring the main listening socket...

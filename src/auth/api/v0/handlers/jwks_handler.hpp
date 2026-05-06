@@ -2,7 +2,7 @@
 
 #include <userver/server/handlers/http_handler_json_base.hpp>
 
-#include <auth/components/auth_service_component.hpp>
+#include <auth/components/auth_security_component.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 class JwksHandler final
@@ -17,6 +17,6 @@ class JwksHandler final
                                RequestContext& context) const override;
 
  private:
-  smirkly::auth::components::AuthServiceComponent& auth_component_;
+  smirkly::auth::components::AuthSecurityComponent& security_component_;
 };
 }  // namespace smirkly::auth::api::v0::handlers
