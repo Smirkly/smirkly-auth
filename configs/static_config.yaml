@@ -18,10 +18,6 @@ components_manager:
             blocking_task_processor: fs-task-processor
             sync-start: true
 
-        #redis-auth:
-        #    thread-pool-size: 4
-        #    secdist_alias: auth-redis
-
         auth-infra:
             postgres-component: postgres-auth
 

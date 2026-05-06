@@ -1,6 +1,5 @@
 pycodestyle
 pytest
-yandex-taxi-testsuite[postgresql-binary,redis]
-redis
+yandex-taxi-testsuite[postgresql-binary]
 psycopg2-binary
 pytest-asyncio

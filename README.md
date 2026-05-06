@@ -123,7 +123,7 @@ Running the service locally
 
 After a successful build:
 
-Make sure Postgres and Redis are running and accessible
+Make sure Postgres is running and accessible
 
 Either via your local installation
 
