@@ -9,6 +9,7 @@ namespace smirkly::auth::services::contracts {
 
     struct RefreshResult final {
         std::string access_token;
+        std::string refresh_token;
         std::string session_id;
     };
 }
