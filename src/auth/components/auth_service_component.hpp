@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <string>
 #include <string_view>
 
 #include <userver/components/loggable_component_base.hpp>
@@ -26,8 +25,6 @@ class AuthServiceComponent final
   services::usecases::AuthService& GetAuthService() noexcept;
 
   const services::usecases::AuthService& GetAuthService() const noexcept;
-
-  const std::string& GetPublicJwksJson() const noexcept;
 
  private:
   struct Impl;
