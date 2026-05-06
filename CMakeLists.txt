@@ -91,7 +91,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         ${PROJECT_NAME}_objs
 )
 
-# Unit Testsll
+# Unit tests
 file(GLOB_RECURSE PROJECT_TEST_SOURCES CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/unit/*.cpp
 )

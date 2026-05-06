@@ -10,7 +10,7 @@ namespace smirkly::auth::services::factories {
     public:
         [[nodiscard]] static ports::NewDeviceData WebDevice(
             std::string user_id,
-            const contracts::RequestMeta &meta
+            const contracts::RequestMeta &
         );
     };
 }

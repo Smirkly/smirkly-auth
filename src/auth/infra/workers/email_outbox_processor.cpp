@@ -5,7 +5,7 @@
 #include <userver/logging/log.hpp>
 
 #include <auth/infra/workers/email_outbox_processor.hpp>
-#include <auth/services/ports/messaging/email_verification_sender.hpp>
+#include <auth/services/ports/notifications/email_verification_sender.hpp>
 #include <auth/services/ports/repositories/email_outbox_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/uow/db_transaction.hpp>
@@ -34,6 +34,7 @@ namespace smirkly::auth::infra::workers {
         auto settings = userver::utils::PeriodicTask::Settings{
             std::chrono::duration_cast<std::chrono::milliseconds>(cfg_.poll_interval)
         };
+        settings.task_processor = &task_processor_;
         task_.Start("email-outbox-processor", settings, [this] { Tick(); });
 
 
@@ -49,7 +50,8 @@ namespace smirkly::auth::infra::workers {
     }
 
     std::chrono::seconds EmailOutboxProcessor::ComputeRetryDelay(std::size_t attempt) const {
-        const auto pow2 = (attempt >= 30) ? (1ULL << 30) : (1ULL << attempt);
+        const auto exponent = attempt == 0 ? 0 : attempt - 1;
+        const auto pow2 = (exponent >= 30) ? (1ULL << 30) : (1ULL << exponent);
         const auto delay = std::chrono::seconds(cfg_.retry_base_delay.count() * static_cast<long long>(pow2));
         return std::min(delay, cfg_.retry_max_delay);
     }
@@ -94,17 +96,17 @@ namespace smirkly::auth::infra::workers {
             } catch (const std::exception &e) {
                 LOG_INFO() << "rescheduled/dead job_id=" << job.id;
 
-                const std::size_t next_attempt = job.attempts + 1;
+                const std::size_t attempt = static_cast<std::size_t>(job.attempts);
 
                 try {
                     auto tx = tx_manager_.Begin("email_outbox.reschedule");
 
-                    if (next_attempt >= cfg_.max_attempts) {
+                    if (attempt >= cfg_.max_attempts) {
                         outbox_repo_.MarkDead(*tx, job.id, now, std::string{e.what()});
                     } else {
-                        const auto delay = ComputeRetryDelay(next_attempt);
+                        const auto delay = ComputeRetryDelay(attempt);
                         const auto next_at = now + delay;
-                        outbox_repo_.Reschedule(*tx, job.id, next_attempt, next_at, std::string{e.what()});
+                        outbox_repo_.Reschedule(*tx, job.id, next_at, std::string{e.what()});
                     }
 
                     tx->Commit();

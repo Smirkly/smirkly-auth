@@ -10,6 +10,7 @@ namespace smirkly::auth::services::factories {
     class SessionFactory final {
     public:
         [[nodiscard]] static ports::NewSessionData CreateForSignIn(
+            std::string session_id,
             std::string user_id,
             std::string device_id,
             std::string refresh_token_hash,

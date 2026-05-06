@@ -4,6 +4,7 @@
 
 namespace smirkly::auth::services::factories {
     ports::NewSessionData SessionFactory::CreateForSignIn(
+        std::string session_id,
         std::string user_id,
         std::string device_id,
         std::string refresh_token_hash,
@@ -11,6 +12,7 @@ namespace smirkly::auth::services::factories {
         const contracts::RequestMeta &meta
     ) {
         return ports::NewSessionData{
+            .id = std::move(session_id),
             .user_id = std::move(user_id),
             .device_id = std::move(device_id),
             .refresh_token_hash = std::move(refresh_token_hash),

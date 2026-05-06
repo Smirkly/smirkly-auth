@@ -1,4 +1,5 @@
 INSERT INTO sessions (
+    id,
     user_id,
     device_id,
     refresh_token_hash,
@@ -12,12 +13,13 @@ INSERT INTO sessions (
 VALUES (
            $1::uuid,
            $2::uuid,
-           $3,
-           NULLIF($4, '')::inet,
-           $5,
+           $3::uuid,
+           $4,
+           NULLIF($5, '')::inet,
            $6,
-           $7::uuid,
+           $7,
            $8::uuid,
+           $9::uuid,
            NOW()
        )
 RETURNING

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <auth/services/contracts/refresh.hpp>
+#include <auth/services/contracts/auth_context.hpp>
+#include <auth/services/contracts/request_meta.hpp>
 #include <auth/services/contracts/sign_in.hpp>
 #include <auth/services/contracts/sign_up.hpp>
 #include <auth/services/contracts/verify_email.hpp>
@@ -9,12 +12,11 @@
 #include <auth/services/ports/repositories/session_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/security/jwt_token_provider.hpp>
-#include <auth/services/ports/security/jwt_token_provider.hpp>
 #include <auth/services/ports/security/password_hasher.hpp>
+#include <auth/services/ports/support/id_generator.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
-
-#include "auth/services/contracts/request_meta.hpp"
+#include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
     class AuthService {
@@ -28,8 +30,8 @@ namespace smirkly::auth::services::usecases {
             ports::VerificationCodeGenerator &code_generator,
             ports::security::JwtTokenProvider &token_provider,
             ports::DeviceRepository &device_repo,
-            ports::SessionRepository &session_repo
-            /* dependences */);
+            ports::SessionRepository &session_repo,
+            ports::support::IdGenerator &id_generator);
 
         contracts::SignUpResult SignUp(
             const contracts::SignUpCommand &cmd,
@@ -43,17 +45,32 @@ namespace smirkly::auth::services::usecases {
             const contracts::SignInCommand &cmd,
             const contracts::RequestMeta &meta = {});
 
+        contracts::RefreshResult Refresh(
+            const contracts::RefreshCommand &cmd,
+            const contracts::RequestMeta &meta = {});
+
+        contracts::AuthContext AuthenticateAccessToken(std::string_view access_token);
+
+        contracts::MeResult GetMe(const contracts::AuthContext &context);
+
+        contracts::SessionsResult ListSessions(const contracts::AuthContext &context);
+
+        void RevokeSession(
+            const contracts::AuthContext &context,
+            std::string_view session_id
+        );
+
     private:
         ports::UserRepository &user_repo_;
         ports::EmailOutboxRepository &email_outbox_repo_;
         ports::EmailVerificationRepository &email_verification_repo_;
-        ports::DeviceRepository &device_repo;
-        ports::SessionRepository &session_repo;
-
-    private:
+        ports::DeviceRepository &device_repo_;
+        ports::SessionRepository &session_repo_;
         ports::TransactionManager &transaction_manager_;
         ports::security::JwtTokenProvider &token_provider_;
         ports::PasswordHasher &password_hasher_;
         ports::VerificationCodeGenerator &code_generator_;
+        ports::support::IdGenerator &id_generator_;
+        validation::SignUpValidator sign_up_validator_;
     };
 }

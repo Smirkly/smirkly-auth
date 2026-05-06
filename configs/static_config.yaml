@@ -52,9 +52,12 @@ components_manager:
         auth-service:
             jwt:
                 issuer: smirkly-auth
+                audience: $AUTH_JWT_AUDIENCE
+                key-id: $AUTH_JWT_KEY_ID
                 access-token-ttl-seconds: 900
                 refresh-token-ttl-seconds: 2592000
-                secret: $AUTH_JWT_SECRET
+                private-key-path: $AUTH_JWT_PRIVATE_KEY_PATH
+                public-key-path: $AUTH_JWT_PUBLIC_KEY_PATH
 
         server:
             listener:                 # configuring the main listening socket...
@@ -111,4 +114,29 @@ components_manager:
         handler-auth-sign-in:
             path: /auth/v0/sign-in
             method: POST
+            task_processor: main-task-processor
+
+        handler-auth-refresh:
+            path: /auth/v0/refresh
+            method: POST
+            task_processor: main-task-processor
+
+        handler-auth-me:
+            path: /auth/v0/me
+            method: GET
+            task_processor: main-task-processor
+
+        handler-auth-sessions:
+            path: /auth/v0/sessions
+            method: GET
+            task_processor: main-task-processor
+
+        handler-auth-session-revoke:
+            path: /auth/v0/sessions/{session_id}
+            method: DELETE
+            task_processor: main-task-processor
+
+        handler-auth-jwks:
+            path: /auth/v0/.well-known/jwks.json
+            method: GET
             task_processor: main-task-processor

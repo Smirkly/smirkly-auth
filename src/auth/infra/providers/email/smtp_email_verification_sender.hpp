@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <auth/services/ports/messaging/email_verification_sender.hpp>
+#include <auth/services/ports/notifications/email_verification_sender.hpp>
 
 namespace smirkly::auth::infra::messaging {
     class SmtpEmailSender;

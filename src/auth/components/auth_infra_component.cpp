@@ -15,6 +15,17 @@
 #include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
 
 namespace smirkly::auth::components {
+    namespace {
+        userver::storages::postgres::ClusterPtr GetPostgresCluster(
+            const userver::components::ComponentConfig &cfg,
+            const userver::components::ComponentContext &ctx) {
+            const auto component_name =
+                cfg["postgres-component"].As<std::string>("postgres-auth");
+            return ctx.FindComponent<userver::components::Postgres>(component_name)
+                .GetCluster();
+        }
+    }
+
     struct AuthInfraComponent::Impl {
         infra::db::pg::PostgresDeviceRepository device_repo;
         infra::db::pg::PostgresSessionRepository session_repo;
@@ -25,30 +36,16 @@ namespace smirkly::auth::components {
 
         Impl(const userver::components::ComponentConfig &cfg,
              const userver::components::ComponentContext &ctx)
-            : device_repo(
-                  ctx.FindComponent<userver::components::Postgres>(
-                      cfg["postgres-component"].As<std::string>("postgres-auth"))
-                  .GetCluster())
-              , session_repo(
-                  ctx.FindComponent<userver::components::Postgres>(
-                      cfg["postgres-component"].As<std::string>("postgres-auth"))
-                  .GetCluster())
-              , email_outbox_repo(
-                  ctx.FindComponent<userver::components::Postgres>(
-                      cfg["postgres-component"].As<std::string>("postgres-auth"))
-                  .GetCluster())
-              , email_verification_repo(
-                  ctx.FindComponent<userver::components::Postgres>(
-                      cfg["postgres-component"].As<std::string>("postgres-auth"))
-                  .GetCluster())
-              , user_repo(
-                  ctx.FindComponent<userver::components::Postgres>(
-                      cfg["postgres-component"].As<std::string>("postgres-auth"))
-                  .GetCluster())
-              , transaction_manager(
-                  ctx.FindComponent<userver::components::Postgres>(
-                      cfg["postgres-component"].As<std::string>("postgres-auth"))
-                  .GetCluster()) {
+            : Impl(GetPostgresCluster(cfg, ctx)) {
+        }
+
+        explicit Impl(const userver::storages::postgres::ClusterPtr &pg_cluster)
+            : device_repo(pg_cluster)
+              , session_repo(pg_cluster)
+              , email_outbox_repo(pg_cluster)
+              , email_verification_repo(pg_cluster)
+              , user_repo(pg_cluster)
+              , transaction_manager(pg_cluster) {
         }
     };
 

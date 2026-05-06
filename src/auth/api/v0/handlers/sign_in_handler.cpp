@@ -1,12 +1,15 @@
 #include <auth/api/v0/handlers/sign_in_handler.hpp>
 
 #include <userver/components/component_context.hpp>
+#include <userver/http/common_headers.hpp>
 #include <userver/server/handlers/exceptions.hpp>
+#include <userver/server/http/http_response_cookie.hpp>
 
 #include <auth/api/v0/dto/sign_in_request.hpp>
 #include <auth/components/auth_service_component.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
+
 
 namespace smirkly::auth::api::v0::handlers {
     SignInHandler::SignInHandler(
@@ -51,9 +54,21 @@ namespace smirkly::auth::api::v0::handlers {
             response["user"]["is_email_verified"] = result.user.is_email_verified;
             response["user"]["is_phone_verified"] = result.user.is_phone_verified;
 
-            response["tokens"]["access_token"] = result.tokens.access_token;
-            response["tokens"]["refresh_token"] = result.tokens.refresh_token;
             response["session_id"] = result.session_id;
+            response["tokens"]["access_token"] = result.tokens.access_token;
+
+            request.GetHttpResponse().SetCookie(
+                userver::server::http::Cookie("refresh_token", result.tokens.refresh_token)
+                .SetHttpOnly()
+                .SetSecure()
+                .SetPath("/auth/v0/refresh")
+                .SetSameSite("Strict")
+            );
+
+            request.GetHttpResponse().SetHeader(
+                std::string_view{"X-Service-Name"},
+                std::string{"smirkly-auth"}
+            );
 
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
             return response.ExtractValue();

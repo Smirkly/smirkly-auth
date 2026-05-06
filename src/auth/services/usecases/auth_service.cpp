@@ -1,10 +1,17 @@
 #include <auth/services/usecases/auth_service.hpp>
 
+#include <chrono>
+
+#include <auth/services/errors/access_token_errors.hpp>
+#include <auth/services/errors/refresh_errors.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
 #include <auth/services/factories/device_factory.hpp>
+#include <auth/services/factories/email_outbox_factory.hpp>
+#include <auth/services/factories/email_verification_factory.hpp>
 #include <auth/services/factories/session_factory.hpp>
+#include <auth/services/factories/user_factory.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
@@ -17,60 +24,57 @@ namespace smirkly::auth::services::usecases {
         ports::VerificationCodeGenerator &code_generator,
         ports::security::JwtTokenProvider &token_provider,
         ports::DeviceRepository &device_repo,
-        ports::SessionRepository &session_repo
-        /* dependences */
+        ports::SessionRepository &session_repo,
+        ports::support::IdGenerator &id_generator
     )
         : user_repo_(user_repo),
-          password_hasher_(password_hasher),
-          code_generator_(code_generator),
           email_outbox_repo_(email_outbox_repo),
           email_verification_repo_(email_verification_repo),
+          device_repo_(device_repo),
+          session_repo_(session_repo),
           transaction_manager_(transaction_manager),
           token_provider_(token_provider),
-          device_repo(device_repo),
-          session_repo(session_repo) {
+          password_hasher_(password_hasher),
+          code_generator_(code_generator),
+          id_generator_(id_generator) {
     }
 
 
     contracts::SignUpResult AuthService::SignUp(
         const contracts::SignUpCommand &cmd,
         const contracts::RequestMeta &meta) {
-        // TODO: move syntactic sign-up validation to SignUpValidator
-        if (cmd.username.empty()) {
-            throw services::errors::SignUpValidation("username is empty");
-        }
-        if (cmd.password.empty()) {
-            throw services::errors::SignUpValidation("password is empty");
-        }
-        if (cmd.email && cmd.email->empty()) {
-            throw services::errors::SignUpValidation("email is empty");
-        }
-
-        std::string normalized_username = cmd.username;
-        // TODO: normalize and validate username before uniqueness check
-
-        std::optional<std::string> email;
-        if (cmd.email) {
-            email = *cmd.email;
-            // TODO: normalize email (trim + lower) and validate format before uniqueness check
-        }
+        const auto input = sign_up_validator_.ValidateAndNormalize(cmd);
+        const auto &normalized_username = input.username.Value();
 
         // fast-fail
         if (user_repo_.ExistsByUsername(normalized_username)) {
             throw errors::UsernameTaken("username taken");
         }
-        if (email && user_repo_.ExistsByEmail(*email)) {
+        if (input.email && user_repo_.ExistsByEmail(input.email->Value())) {
             throw errors::EmailTaken("email taken");
         }
+        if (input.phone && user_repo_.ExistsByPhone(input.phone->Value())) {
+            throw errors::PhoneTaken("phone taken");
+        }
 
-        const std::string password_hash = password_hasher_.Hash(cmd.password);
+        const std::string password_hash = password_hasher_.Hash(input.password);
 
-        ports::NewUserData new_user_data = {
-            .username = normalized_username,
-            .password_hash = password_hash,
-            .email = email,
-            .phone = cmd.phone
-        };
+        std::optional<std::string> email;
+        if (input.email) {
+            email = input.email->Value();
+        }
+
+        std::optional<std::string> phone;
+        if (input.phone) {
+            phone = input.phone->Value();
+        }
+
+        auto new_user_data = factories::UserFactory::CreateFromSignUp(
+            normalized_username,
+            password_hash,
+            std::move(email),
+            std::move(phone)
+        );
 
         auto tx = transaction_manager_.Begin("auth.sign_up");
 
@@ -82,22 +86,22 @@ namespace smirkly::auth::services::usecases {
             const std::string code_hash = password_hasher_.Hash(raw_code);
             const auto now = std::chrono::system_clock::now();
 
-            ports::NewEmailVerificationData verification_data = {
-                .user_id = user.id,
-                .code_hash = code_hash,
-                .expires_at = now + std::chrono::minutes(15),
-                .ip = meta.ip,
-                .user_agent = meta.user_agent
-            };
+            auto verification_data = factories::EmailVerificationFactory::Create(
+                user.id,
+                code_hash,
+                meta,
+                now,
+                std::chrono::minutes{15}
+            );
 
             email_verification_repo_.Insert(*tx, verification_data);
 
-            ports::EnqueueVerificationEmail job = {
-                .to_email = *user.email,
-                .code = raw_code,
-                .correlation_id = correlation_id,
-                .locale = "ru"
-            };
+            auto job = factories::EmailOutboxFactory::VerificationEmail(
+                *user.email,
+                raw_code,
+                user.id,
+                "ru"
+            );
 
             email_outbox_repo_.Insert(*tx, job);
         }
@@ -109,7 +113,7 @@ namespace smirkly::auth::services::usecases {
 
     void AuthService::VerifyEmail(
         const contracts::VerifyEmailCommand &cmd,
-        const contracts::RequestMeta &meta) {
+        const contracts::RequestMeta &) {
         const auto user_opt = user_repo_.FindByEmail(cmd.email);
 
         if (!user_opt) {
@@ -171,7 +175,6 @@ namespace smirkly::auth::services::usecases {
         if (!user_opt) {
             throw errors::InvalidCredentials("invalid credentials");
         }
-
         const auto &user = *user_opt;
 
         const bool password_ok = password_hasher_.Verify(cmd.password, user.password);
@@ -179,18 +182,19 @@ namespace smirkly::auth::services::usecases {
             throw errors::InvalidCredentials("invalid credentials");
         }
 
-        // TODO: generate stable token family id for refresh-token rotation chain
-        const std::string token_family_id = "generated-token-family-id";
+        const std::string session_id = id_generator_.Generate();
+        const std::string token_family_id = id_generator_.Generate();
 
-        auto tokens = token_provider_.GenerateTokens(user.id);
+        auto tokens = token_provider_.GenerateTokens(user.id, session_id, token_family_id);
         auto refresh_token_hash = password_hasher_.Hash(tokens.refresh_token);
 
         auto tx = transaction_manager_.Begin("auth.sign_in");
 
         auto new_device_data = factories::DeviceFactory::WebDevice(user.id, meta);
-        auto device = device_repo.Insert(*tx, new_device_data);
+        auto device = device_repo_.Insert(*tx, new_device_data);
 
         auto new_session_data = factories::SessionFactory::CreateForSignIn(
+            session_id,
             user.id,
             device.id,
             std::move(refresh_token_hash),
@@ -198,7 +202,7 @@ namespace smirkly::auth::services::usecases {
             meta
         );
 
-        domain::models::Session session = session_repo.Insert(*tx, new_session_data);
+        domain::models::Session session = session_repo_.Insert(*tx, new_session_data);
         tx->Commit();
 
         contracts::SignInResult result = {
@@ -208,5 +212,127 @@ namespace smirkly::auth::services::usecases {
         };
 
         return result;
+    }
+
+
+    contracts::RefreshResult AuthService::Refresh(
+        const contracts::RefreshCommand &cmd,
+        const contracts::RequestMeta &) {
+        if (cmd.refresh_token.empty()) {
+            throw errors::InvalidRefreshToken("refresh token is empty");
+        }
+
+        const auto claims = token_provider_.ParseRefreshToken(cmd.refresh_token);
+
+        const auto session_opt = session_repo_.FindById(claims.session_id);
+        if (!session_opt) {
+            throw errors::RefreshSessionNotFound("session not found");
+        }
+
+        const auto &session = *session_opt;
+        const auto now = std::chrono::system_clock::now();
+
+        if (session.user_id != claims.user_id) {
+            throw errors::InvalidRefreshToken("refresh token subject mismatch");
+        }
+
+        if (session.revoked_at.has_value()) {
+            throw errors::RefreshSessionRevoked("session revoked");
+        }
+
+        if (session.expires_at <= now) {
+            throw errors::RefreshSessionExpired("session expired");
+        }
+
+        const bool refresh_token_ok = password_hasher_.Verify(
+            cmd.refresh_token,
+            session.refresh_token_hash
+        );
+
+        if (!refresh_token_ok) {
+            throw errors::InvalidRefreshToken("refresh token hash mismatch");
+        }
+
+        auto tx = transaction_manager_.Begin("auth.refresh");
+        session_repo_.UpdateLastUsed(*tx, session.id, now);
+        tx->Commit();
+
+        contracts::RefreshResult result = {
+            .access_token = token_provider_.GenerateAccessToken(session.user_id, session.id),
+            .session_id = session.id
+        };
+
+        return result;
+    }
+
+    contracts::AuthContext AuthService::AuthenticateAccessToken(std::string_view access_token) {
+        if (access_token.empty()) {
+            throw errors::MissingAccessToken("access token is required");
+        }
+
+        const auto claims = token_provider_.ParseAccessToken(access_token);
+        const auto session_opt = session_repo_.FindById(claims.session_id);
+        if (!session_opt) {
+            throw errors::AuthSessionNotFound("session not found");
+        }
+
+        const auto &session = *session_opt;
+        if (session.user_id != claims.user_id) {
+            throw errors::InvalidAccessToken("access token subject mismatch");
+        }
+        if (session.revoked_at) {
+            throw errors::AuthSessionRevoked("session revoked");
+        }
+        if (session.expires_at <= std::chrono::system_clock::now()) {
+            throw errors::AuthSessionExpired("session expired");
+        }
+
+        const auto user_opt = user_repo_.FindById(claims.user_id);
+        if (!user_opt) {
+            throw errors::AuthUserNotFound("user not found");
+        }
+
+        return {
+            .user_id = claims.user_id,
+            .session_id = claims.session_id,
+        };
+    }
+
+    contracts::MeResult AuthService::GetMe(const contracts::AuthContext &context) {
+        const auto user_opt = user_repo_.FindById(context.user_id);
+        if (!user_opt) {
+            throw errors::AuthUserNotFound("user not found");
+        }
+
+        return {
+            .user = *user_opt,
+            .session_id = context.session_id,
+        };
+    }
+
+    contracts::SessionsResult AuthService::ListSessions(const contracts::AuthContext &context) {
+        return {
+            .sessions = session_repo_.ListActiveByUserId(context.user_id),
+        };
+    }
+
+    void AuthService::RevokeSession(
+        const contracts::AuthContext &context,
+        std::string_view session_id
+    ) {
+        const auto target_session = session_repo_.FindById(session_id);
+        if (!target_session) {
+            throw errors::SessionNotFound("session not found");
+        }
+        if (target_session->user_id != context.user_id) {
+            throw errors::SessionForbidden("session belongs to another user");
+        }
+        if (target_session->revoked_at) {
+            return;
+        }
+
+        auto tx = transaction_manager_.Begin("auth.sessions.revoke");
+        session_repo_.RevokeByUserId(*tx, session_id, context.user_id);
+        tx->Commit();
     }
 }

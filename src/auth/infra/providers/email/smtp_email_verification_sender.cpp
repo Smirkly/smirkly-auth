@@ -3,7 +3,7 @@
 #include <utility>
 #include <stdexcept>
 
-#include <auth/infra/messaging/smtp_email_sender.hpp>
+#include <auth/infra/messaging/smtp/smtp_email_sender.hpp>
 
 namespace smirkly::auth::infra::providers::email {
     SmtpEmailVerificationSender::SmtpEmailVerificationSender(

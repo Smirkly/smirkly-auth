@@ -24,9 +24,17 @@ namespace smirkly::auth::infra::db::pg {
 
         std::optional<domain::models::Session> FindById(std::string_view session_id) override;
 
+        std::vector<domain::models::Session> ListActiveByUserId(std::string_view user_id) override;
+
         void Revoke(
             services::ports::DbTransaction &tx,
             std::string_view session_id
+        ) override;
+
+        bool RevokeByUserId(
+            services::ports::DbTransaction &tx,
+            std::string_view session_id,
+            std::string_view user_id
         ) override;
 
         void UpdateLastUsed(

@@ -52,7 +52,6 @@ namespace smirkly::auth::services::ports {
         virtual void Reschedule(
             DbTransaction &tx,
             std::string_view id,
-            std::size_t next_attempt,
             std::chrono::system_clock::time_point next_at,
             std::string_view last_error
         ) = 0;

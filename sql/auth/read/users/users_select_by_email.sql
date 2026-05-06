@@ -10,5 +10,5 @@ SELECT
     password_updated_at AS password_updated_at,
     deleted_at          AS deleted_at
 FROM users
-WHERE email = $1
+WHERE lower(email) = lower($1)
   AND deleted_at IS NULL;

@@ -5,3 +5,8 @@ logger-level: debug
 is-testing: true
 
 server-port: 8080
+
+AUTH_JWT_AUDIENCE: smirkly-api
+AUTH_JWT_KEY_ID: smirkly-auth-testing-rs256
+AUTH_JWT_PRIVATE_KEY_PATH: ./third_party/cpp-jwt/examples/rsa_256/jwtRS256.key
+AUTH_JWT_PUBLIC_KEY_PATH: ./third_party/cpp-jwt/examples/rsa_256/jwtRS256.key.pub

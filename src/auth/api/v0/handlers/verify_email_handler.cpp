@@ -21,7 +21,7 @@ namespace smirkly::auth::api::v0::handlers {
 
     std::string VerifyEmailHandler::HandleRequestThrow(
         const userver::server::http::HttpRequest &request,
-        userver::server::request::RequestContext &context
+        userver::server::request::RequestContext &
     )
     const {
         const std::string_view email = request.GetArg("email");
