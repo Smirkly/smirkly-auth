@@ -17,6 +17,7 @@
 #include <openssl/pem.h>
 #include <jwt/jwt.hpp>
 #include <userver/formats/json.hpp>
+#include <userver/utils/boost_uuid4.hpp>
 
 #include <auth/services/errors/refresh_errors.hpp>
 #include <auth/services/errors/access_token_errors.hpp>
@@ -36,6 +37,11 @@ constexpr std::string_view kAlgorithm = "RS256";
 
 std::chrono::system_clock::time_point Now() {
   return std::chrono::system_clock::now();
+}
+
+std::string CanonicalUuidString(std::string_view uuid) {
+  return USERVER_NAMESPACE::utils::ToString(
+      USERVER_NAMESPACE::utils::BoostUuidFromString(uuid));
 }
 
 std::string Base64UrlEncode(const std::vector<unsigned char>& bytes) {
@@ -230,17 +236,23 @@ JwtCppTokenProvider::ParseRefreshToken(std::string_view refresh_token) const {
       throw services::errors::InvalidRefreshToken("invalid refresh token");
     }
 
+    const auto user_id = CanonicalUuidString(
+        decoded.payload().get_claim_value<std::string>(
+            std::string{kSubjectClaim}));
+    const auto session_id = CanonicalUuidString(
+        decoded.payload().get_claim_value<std::string>(
+            std::string{kSessionIdClaim}));
+
     services::ports::security::RefreshTokenClaims claims{
-        .user_id = decoded.payload().get_claim_value<std::string>(
-            std::string{kSubjectClaim}),
-        .session_id = decoded.payload().get_claim_value<std::string>(
-            std::string{kSessionIdClaim}),
+        .user_id = user_id,
+        .session_id = session_id,
         .token_family_id = std::nullopt,
     };
 
     try {
-      claims.token_family_id = decoded.payload().get_claim_value<std::string>(
-          std::string{kTokenFamilyClaim});
+      claims.token_family_id = CanonicalUuidString(
+          decoded.payload().get_claim_value<std::string>(
+              std::string{kTokenFamilyClaim}));
     } catch (const std::exception&) {
     }
 
@@ -286,12 +298,14 @@ JwtCppTokenProvider::ParseAccessToken(std::string_view access_token) const {
       throw services::errors::InvalidAccessToken("invalid access token");
     }
 
-    return {
-        .user_id = decoded.payload().get_claim_value<std::string>(
-            std::string{kSubjectClaim}),
-        .session_id = decoded.payload().get_claim_value<std::string>(
-            std::string{kSessionIdClaim}),
-    };
+    const auto user_id = CanonicalUuidString(
+        decoded.payload().get_claim_value<std::string>(
+            std::string{kSubjectClaim}));
+    const auto session_id = CanonicalUuidString(
+        decoded.payload().get_claim_value<std::string>(
+            std::string{kSessionIdClaim}));
+
+    return {.user_id = user_id, .session_id = session_id};
   } catch (const services::errors::InvalidAccessToken&) {
     throw;
   } catch (const std::exception&) {
