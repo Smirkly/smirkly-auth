@@ -84,6 +84,21 @@ UTEST(JwtCppTokenProvider, GenerateAndParseAccessTokenRs256) {
   EXPECT_EQ(claims.session_id, "8296d634-a545-4d34-a48b-557b246e8038");
 }
 
+UTEST(JwtCppTokenProvider, ParsesCompactUuidClaimsAsCanonical) {
+  auto provider = MakeProvider();
+
+  const auto refresh_token =
+      provider.GenerateRefreshToken("7c03fcb288a9482ca6f1a95f86210aaa",
+                                    "8296d634a5454d34a48b557b246e8038",
+                                    "6ac66b0eddc04116b0988f54d8947f58");
+
+  const auto claims = provider.ParseRefreshToken(refresh_token);
+  EXPECT_EQ(claims.user_id, "7c03fcb2-88a9-482c-a6f1-a95f86210aaa");
+  EXPECT_EQ(claims.session_id, "8296d634-a545-4d34-a48b-557b246e8038");
+  ASSERT_TRUE(claims.token_family_id.has_value());
+  EXPECT_EQ(*claims.token_family_id, "6ac66b0e-ddc0-4116-b098-8f54d8947f58");
+}
+
 UTEST(JwtCppTokenProvider, RejectsRefreshTokenAsAccessToken) {
   auto provider = MakeProvider();
 
