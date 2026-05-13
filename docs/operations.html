@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Operations | Smirkly Auth</title>
+    <meta name="description" content="Operational guidance for deploying and running smirkly-auth.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html">Overview</a>
+          <a href="getting-started.html">Getting Started</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="operations.html" aria-current="page">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="content">
+          <p class="eyebrow">Runbook</p>
+          <h1>Operations</h1>
+          <p class="lead">
+            Use this page as the deployment and production-readiness checklist for the service.
+          </p>
+
+          <h2>Configuration</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Setting</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>AUTH_JWT_AUDIENCE</code></td>
+                  <td>Audience claim expected by downstream services.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_JWT_KEY_ID</code></td>
+                  <td>JWT key identifier exposed as <code>kid</code> in tokens and JWKS.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_JWT_PRIVATE_KEY_PATH</code></td>
+                  <td>Path to the RSA private key used for signing tokens.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_JWT_PUBLIC_KEY_PATH</code></td>
+                  <td>Path to the RSA public key exposed through JWKS.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_*</code></td>
+                  <td>SMTP host, TLS mode, credentials, sender address, and sender name.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Deployment Checklist</h2>
+          <ul>
+            <li>Serve the service only behind TLS.</li>
+            <li>Keep JWT private keys, SMTP credentials, and database passwords in a secret store.</li>
+            <li>Use a migration runner for schema changes.</li>
+            <li>Disable test-only handlers and fake congestion-control settings in production configs.</li>
+            <li>Configure reverse proxy request-size limits and rate limits for auth endpoints.</li>
+            <li>Keep access logs free of passwords, refresh tokens, verification codes, and raw cookies.</li>
+            <li>Monitor sign-in failures, refresh-token reuse events, SMTP failures, and outbox dead jobs.</li>
+          </ul>
+
+          <h2>Security Controls</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Edge</h3>
+              <p class="muted">
+                Apply IP and path rate limits at the proxy. Treat proxy headers as trusted only when
+                they come from controlled infrastructure.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Application</h3>
+              <p class="muted">
+                Add account-aware limits for username, email, phone, user id, and verification target
+                when the backing store is available.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Tokens</h3>
+              <p class="muted">
+                Rotate refresh tokens, revoke token families on reuse, and rotate JWT signing keys
+                through JWKS with overlapping validity windows.
+              </p>
+            </article>
+          </div>
+
+          <h2>GitHub Pages</h2>
+          <p>
+            The repository includes a Pages workflow that publishes the static docs site. It copies
+            <code>docs/</code> and the current <code>openapi/auth-v0.yaml</code> into the Pages
+            artifact.
+          </p>
+          <ol>
+            <li>Commit <code>docs/</code>, <code>openapi/auth-v0.yaml</code>, and the Pages workflow.</li>
+            <li>In repository settings, enable GitHub Pages with GitHub Actions as the source.</li>
+            <li>Push to <code>master</code> or run the workflow manually.</li>
+          </ol>
+
+          <h2>Release Gate</h2>
+          <pre><code>cmake --build cmake-build-debug -j$(nproc) --target smirkly-auth smirkly-auth_unittest
+ctest --test-dir cmake-build-debug --output-on-failure
+ruby -e "require 'yaml'; YAML.load_file('openapi/auth-v0.yaml')"</code></pre>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Architecture | Smirkly Auth</title>
+    <meta name="description" content="Architecture notes for the Smirkly authentication service.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html">Overview</a>
+          <a href="getting-started.html">Getting Started</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html" aria-current="page">Architecture</a>
+          <a href="operations.html">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="content">
+          <p class="eyebrow">Design</p>
+          <h1>Architecture</h1>
+          <p class="lead">
+            The service is structured around application use cases and explicit ports for storage,
+            security, messaging, and unit-of-work boundaries.
+          </p>
+
+          <h2>Layering</h2>
+          <pre><code>HTTP handlers
+  -> DTO parsing and response mapping
+  -> AuthService use cases
+  -> Repository / security / messaging ports
+  -> Postgres, JWT, bcrypt, SMTP, UUID providers</code></pre>
+
+          <h2>Core Components</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Responsibility</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>AuthService</code></td>
+                  <td>Coordinates sign-up, verification, sign-in, refresh, session revocation, and password changes.</td>
+                </tr>
+                <tr>
+                  <td><code>JwtTokenProvider</code></td>
+                  <td>Signs RS256 access and refresh tokens, parses claims, and exposes public JWKS.</td>
+                </tr>
+                <tr>
+                  <td><code>SessionRepository</code></td>
+                  <td>Stores refresh-token hashes, token families, expiry, revocation, and replacement links.</td>
+                </tr>
+                <tr>
+                  <td><code>EmailOutboxProcessor</code></td>
+                  <td>Claims pending email jobs, sends SMTP messages, and applies retry/dead-letter state.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Token Model</h2>
+          <ul>
+            <li>Access tokens are RS256 JWTs with short TTL.</li>
+            <li>Refresh tokens are RS256 JWTs delivered through the <code>refresh_token</code> HttpOnly Secure cookie.</li>
+            <li>Only refresh-token hashes are stored in Postgres.</li>
+            <li>Refresh rotates into a new session id while preserving the token family id.</li>
+            <li>Detected refresh-token reuse revokes the whole token family.</li>
+          </ul>
+
+          <h2>Session Semantics</h2>
+          <p>
+            A session is the persisted server-side state that backs both the access token and refresh
+            token lifecycle. Access-token authentication accepts a valid JWT only when the session
+            exists, is not revoked, and is not expired.
+          </p>
+
+          <h2>Password Change</h2>
+          <p>
+            Password changes verify the current password, validate the new password with the same
+            policy used at sign-up, update the password hash, and revoke all active sessions for the
+            user. The client must sign in again after a successful password change.
+          </p>
+
+          <h2>Email Verification</h2>
+          <p>
+            Sign-up creates a verification record and writes a pending email job into the outbox in
+            the same transaction. The outbox worker claims jobs with row locking and sends them
+            through SMTP.
+          </p>
+
+          <h2>Data Ownership</h2>
+          <ul>
+            <li><code>users</code>: identity, password hash, verification flags, soft deletion.</li>
+            <li><code>devices</code>: client device metadata captured during sign-in.</li>
+            <li><code>sessions</code>: refresh hashes, expiry, revocation, token family, replacement links.</li>
+            <li><code>email_verifications</code>: verification code hashes and attempt metadata.</li>
+            <li><code>email_outbox</code>: durable email delivery queue.</li>
+          </ul>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

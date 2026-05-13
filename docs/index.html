@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Smirkly Auth Documentation</title>
+    <meta name="description" content="Project documentation for the Smirkly authentication service.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html" aria-current="page">Overview</a>
+          <a href="getting-started.html">Getting Started</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="operations.html">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <section class="hero">
+          <div class="content">
+            <p class="eyebrow">Smirkly Auth</p>
+            <h1>Authentication, sessions, token rotation, and verification flows.</h1>
+            <p class="lead">
+              This service owns user sign-up, sign-in, email verification, JWT access tokens,
+              refresh-token rotation, session revocation, logout, and password changes.
+            </p>
+            <div class="actions">
+              <a class="button button--primary" href="api.html">Open API Reference</a>
+              <a class="button" href="getting-started.html">Run Locally</a>
+              <a class="button" href="architecture.html">Read Architecture</a>
+            </div>
+          </div>
+        </section>
+
+        <div class="content">
+          <h2>Service Surface</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Identity</h3>
+              <p class="muted">
+                User registration supports username plus email or phone. Passwords are validated
+                before hashing and persistence.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Sessions</h3>
+              <p class="muted">
+                Sign-in creates a device and session record. Access-token authentication is checked
+                against active session state in Postgres.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Refresh Rotation</h3>
+              <p class="muted">
+                Refresh tokens are stored as hashes, rotated on refresh, and protected by token
+                family reuse detection.
+              </p>
+            </article>
+          </div>
+
+          <h2>Primary Endpoints</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Path</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/sign-up</code></td>
+                  <td>Create a new user and enqueue email verification when email is present.</td>
+                </tr>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/sign-in</code></td>
+                  <td>Create a session, return an access token, and set the refresh cookie.</td>
+                </tr>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/refresh</code></td>
+                  <td>Rotate the refresh token and return a new access token.</td>
+                </tr>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/logout</code></td>
+                  <td>Revoke the current session and clear the refresh cookie.</td>
+                </tr>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/change-password</code></td>
+                  <td>Update the password and revoke all user sessions.</td>
+                </tr>
+                <tr>
+                  <td><code>GET</code></td>
+                  <td><code>/auth/v0/.well-known/jwks.json</code></td>
+                  <td>Expose the public JWKS used by other services to verify access tokens.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Repository Map</h2>
+          <pre><code>src/auth/api/v0/handlers       HTTP handlers
+src/auth/services/usecases     Application use cases
+src/auth/services/ports        Interfaces for infra dependencies
+src/auth/infra                 Postgres, SMTP, JWT, bcrypt, id providers
+src/auth/domain                Domain models and value objects
+sql/auth                       SQL query files compiled by userver
+migrations                     Postgres schema migrations
+openapi/auth-v0.yaml           OpenAPI contract</code></pre>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
