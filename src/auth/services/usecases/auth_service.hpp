@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string_view>
+
+#include <auth/services/contracts/change_password.hpp>
 #include <auth/services/contracts/refresh.hpp>
 #include <auth/services/contracts/auth_context.hpp>
 #include <auth/services/contracts/request_meta.hpp>
@@ -60,6 +63,15 @@ namespace smirkly::auth::services::usecases {
         void RevokeSession(
             const contracts::AuthContext &context,
             std::string_view session_id
+        );
+
+        void RevokeCurrentSession(const contracts::AuthContext &context);
+
+        void RevokeAllSessions(const contracts::AuthContext &context);
+
+        void ChangePassword(
+            const contracts::AuthContext &context,
+            const contracts::ChangePasswordCommand &cmd
         );
 
     private:

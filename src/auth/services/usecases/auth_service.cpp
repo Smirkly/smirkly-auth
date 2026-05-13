@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include <auth/services/errors/access_token_errors.hpp>
+#include <auth/services/errors/change_password_errors.hpp>
 #include <auth/services/errors/refresh_errors.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
@@ -375,6 +376,52 @@ namespace smirkly::auth::services::usecases {
 
         auto tx = transaction_manager_.Begin("auth.sessions.revoke");
         session_repo.RevokeByUserId(*tx, session_id, context.user_id);
+        tx->Commit();
+    }
+
+    void AuthService::RevokeCurrentSession(const contracts::AuthContext &context) {
+        RevokeSession(context, context.session_id);
+    }
+
+    void AuthService::RevokeAllSessions(const contracts::AuthContext &context) {
+        auto tx = transaction_manager_.Begin("auth.sessions.revoke_all");
+        session_repo.RevokeAllByUserId(*tx, context.user_id);
+        tx->Commit();
+    }
+
+    void AuthService::ChangePassword(
+        const contracts::AuthContext &context,
+        const contracts::ChangePasswordCommand &cmd
+    ) {
+        if (cmd.current_password.empty()) {
+            throw errors::ChangePasswordValidation("current password is required");
+        }
+
+        try {
+            sign_up_validator_.ValidatePassword(cmd.new_password);
+        } catch (const errors::SignUpValidation &e) {
+            throw errors::ChangePasswordValidation(e.what());
+        }
+
+        const auto user_opt = user_repo_.FindById(context.user_id);
+        if (!user_opt) {
+            throw errors::AuthUserNotFound("user not found");
+        }
+
+        const auto &user = *user_opt;
+        if (!password_hasher_.Verify(cmd.current_password, user.password)) {
+            throw errors::InvalidCurrentPassword("invalid current password");
+        }
+
+        if (password_hasher_.Verify(cmd.new_password, user.password)) {
+            throw errors::ChangePasswordValidation("new password must differ from current password");
+        }
+
+        const auto new_password_hash = password_hasher_.Hash(cmd.new_password);
+
+        auto tx = transaction_manager_.Begin("auth.change_password");
+        user_repo_.UpdatePasswordHash(*tx, context.user_id, new_password_hash);
+        session_repo.RevokeAllByUserId(*tx, context.user_id);
         tx->Commit();
     }
 }

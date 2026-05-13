@@ -1,0 +1,539 @@
+openapi: 3.0.3
+info:
+  title: Smirkly Auth API
+  version: 0.1.0
+  description: |
+    Authentication API for Smirkly clients and backend services.
+
+    Access tokens are RS256 JWTs. Refresh tokens are delivered only through the
+    `refresh_token` HttpOnly Secure cookie and are rotated on every refresh.
+servers:
+  - url: '{baseUrl}'
+    description: Configurable auth service base URL
+    variables:
+      baseUrl:
+        default: http://localhost:8080
+        description: Override with the auth API origin for the target environment.
+tags:
+  - name: Auth
+  - name: Sessions
+  - name: Discovery
+paths:
+  /auth/v0/sign-up:
+    post:
+      tags: [Auth]
+      operationId: signUp
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                additionalProperties: false
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Username, email, or phone is already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/v0/verify-email:
+    get:
+      tags: [Auth]
+      operationId: verifyEmail
+      summary: Verify a user email by code
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+            maxLength: 320
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{6}$'
+      responses:
+        '204':
+          description: Email verified, or it was already verified
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: User was not found
+        '410':
+          description: Verification code expired or was not found
+
+  /auth/v0/sign-in:
+    post:
+      tags: [Auth]
+      operationId: signIn
+      summary: Sign in and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: Signed in
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshTokenCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Email is not verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/v0/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      summary: Rotate the refresh token and issue a new access token
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: Token refreshed
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshTokenCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/v0/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current session and clear the refresh cookie
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Current session revoked
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/ClearRefreshTokenCookie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/v0/change-password:
+    post:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change the current user's password
+      description: Updates the password and revokes all active sessions for the user.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed, all sessions revoked
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/ClearRefreshTokenCookie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/v0/me:
+    get:
+      tags: [Auth]
+      operationId: getMe
+      summary: Return the current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/v0/sessions:
+    get:
+      tags: [Sessions]
+      operationId: listSessions
+      summary: List active sessions for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags: [Sessions]
+      operationId: revokeAllSessions
+      summary: Revoke all sessions for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: All user sessions revoked
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/ClearRefreshTokenCookie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/v0/sessions/{session_id}:
+    delete:
+      tags: [Sessions]
+      operationId: revokeSession
+      summary: Revoke one session owned by the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/v0/.well-known/jwks.json:
+    get:
+      tags: [Discovery]
+      operationId: getJwks
+      summary: Return public JWT signing keys
+      responses:
+        '200':
+          description: JSON Web Key Set
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: public, max-age=300
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Jwks'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+
+  headers:
+    RefreshTokenCookie:
+      description: HttpOnly Secure refresh-token cookie scoped to `/auth/v0/refresh`.
+      schema:
+        type: string
+      example: refresh_token=eyJ...; Path=/auth/v0/refresh; HttpOnly; Secure; SameSite=Strict
+    ClearRefreshTokenCookie:
+      description: Expired refresh-token cookie.
+      schema:
+        type: string
+      example: refresh_token=; Max-Age=0; Path=/auth/v0/refresh; HttpOnly; Secure; SameSite=Strict
+
+  responses:
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Authenticated user is not allowed to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          example: auth.invalid_access_token
+        message:
+          type: string
+          example: invalid access token
+
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - is_email_verified
+        - is_phone_verified
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: '^[a-z0-9_]+$'
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+          pattern: '^[+][0-9]{8,15}$'
+        is_email_verified:
+          type: boolean
+        is_phone_verified:
+          type: boolean
+
+    SignUpRequest:
+      type: object
+      required: [username, password]
+      additionalProperties: false
+      anyOf:
+        - required: [email]
+        - required: [phone]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: '^[a-zA-Z0-9_]+$'
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        phone:
+          type: string
+          pattern: '^[+]?[0-9 ()-]{8,24}$'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+
+    SignInRequest:
+      type: object
+      required: [password]
+      additionalProperties: false
+      anyOf:
+        - required: [username]
+        - required: [email]
+        - required: [phone]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      additionalProperties: false
+      properties:
+        current_password:
+          type: string
+          format: password
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+
+    SignInResponse:
+      type: object
+      required: [user, session_id, tokens]
+      additionalProperties: false
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session_id:
+          type: string
+          format: uuid
+        tokens:
+          type: object
+          required: [access_token]
+          additionalProperties: false
+          properties:
+            access_token:
+              type: string
+
+    RefreshResponse:
+      type: object
+      required: [tokens, session_id]
+      additionalProperties: false
+      properties:
+        tokens:
+          type: object
+          required: [access_token]
+          additionalProperties: false
+          properties:
+            access_token:
+              type: string
+        session_id:
+          type: string
+          format: uuid
+
+    MeResponse:
+      type: object
+      required: [user, session_id]
+      additionalProperties: false
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session_id:
+          type: string
+          format: uuid
+
+    Session:
+      type: object
+      required:
+        - id
+        - device_id
+        - ip
+        - user_agent
+        - created_at
+        - last_used_at
+        - expires_at
+        - current
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+          nullable: true
+        ip:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+
+    SessionsResponse:
+      type: object
+      required: [sessions]
+      additionalProperties: false
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+
+    Jwks:
+      type: object
+      required: [keys]
+      additionalProperties: true
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required: [kty, kid, use, alg, n, e]
+            properties:
+              kty:
+                type: string
+                example: RSA
+              kid:
+                type: string
+              use:
+                type: string
+                example: sig
+              alg:
+                type: string
+                example: RS256
+              n:
+                type: string
+              e:
+                type: string
+                example: AQAB

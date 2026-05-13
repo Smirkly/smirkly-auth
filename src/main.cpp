@@ -10,9 +10,12 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include <auth/api/v0/handlers/jwks_handler.hpp>
+#include <auth/api/v0/handlers/change_password_handler.hpp>
+#include <auth/api/v0/handlers/logout_handler.hpp>
 #include <auth/api/v0/handlers/me_handler.hpp>
 #include <auth/api/v0/handlers/refresh_token_handler.hpp>
 #include <auth/api/v0/handlers/session_revoke_handler.hpp>
+#include <auth/api/v0/handlers/sessions_revoke_all_handler.hpp>
 #include <auth/api/v0/handlers/sessions_handler.hpp>
 #include <auth/api/v0/handlers/sign_in_handler.hpp>
 #include <auth/api/v0/handlers/sign_up_handler.hpp>
@@ -38,8 +41,11 @@ int main(int argc, char* argv[]) {
           .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>()
           .Append<smirkly::auth::api::v0::handlers::SignInHandler>()
           .Append<smirkly::auth::api::v0::handlers::RefreshHandler>()
+          .Append<smirkly::auth::api::v0::handlers::LogoutHandler>()
+          .Append<smirkly::auth::api::v0::handlers::ChangePasswordHandler>()
           .Append<smirkly::auth::api::v0::handlers::MeHandler>()
           .Append<smirkly::auth::api::v0::handlers::SessionsHandler>()
+          .Append<smirkly::auth::api::v0::handlers::SessionsRevokeAllHandler>()
           .Append<smirkly::auth::api::v0::handlers::SessionRevokeHandler>()
           .Append<smirkly::auth::api::v0::handlers::JwksHandler>();
 

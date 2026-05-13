@@ -37,6 +37,11 @@ namespace smirkly::auth::infra::db::pg {
             std::string_view user_id
         ) override;
 
+        void RevokeAllByUserId(
+            services::ports::DbTransaction &tx,
+            std::string_view user_id
+        ) override;
+
         bool RevokeAndReplace(
             services::ports::DbTransaction &tx,
             std::string_view session_id,

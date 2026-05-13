@@ -9,13 +9,17 @@ Authentication microservice for the Smirkly platform, built with the [userver fr
 
 Implemented:
 - User registration (email + password) with persistence in Postgres
-- Sign-in issuing `{access_token, refresh_token}` (JWT)
+- Sign-in issuing an access token and an HttpOnly refresh-token cookie
+- Refresh-token storage, rotation, reuse detection, and session revocation
+- Current-session logout and all-sessions revocation
+- Password change with all-sessions revocation
 - Email verification flow: verification code generation and enqueueing email into outbox
+- Public JWKS endpoint for access-token verification
 
 Work in progress:
-- Session/device model and refresh-token lifecycle (storage/rotation/revocation)
-- Logout and token invalidation
-- Password change / reset flows
+- Password reset flow
+- Production deployment packaging and migration runner
+- Application-level rate limiting
 
 
 > Status: active development. APIs, configuration, and internal structure may change without backward compatibility guarantees.

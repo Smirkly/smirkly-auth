@@ -5,11 +5,11 @@
 #include <auth/services/usecases/auth_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
-    class ChangePasswordHandler final : public userver::server::handlers::HttpHandlerJsonBase {
+    class SessionsRevokeAllHandler final : public userver::server::handlers::HttpHandlerJsonBase {
     public:
-        static constexpr std::string_view kName = "handler-auth-change-password";
+        static constexpr std::string_view kName = "handler-auth-sessions-revoke-all";
 
-        ChangePasswordHandler(
+        SessionsRevokeAllHandler(
             const userver::components::ComponentConfig &config,
             const userver::components::ComponentContext &context
         );

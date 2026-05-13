@@ -1,4 +1,5 @@
 #include <auth/services/errors/refresh_errors.hpp>
+#include <auth/services/errors/change_password_errors.hpp>
 #include <auth/services/usecases/auth_service.hpp>
 
 #include <chrono>
@@ -126,6 +127,20 @@ domain::Session MakeSession(
   return session;
 }
 
+domain::User MakeUser(std::string id, std::string password_hash) {
+  const auto now = std::chrono::system_clock::now();
+
+  domain::User user;
+  user.id = std::move(id);
+  user.username = "unit_user";
+  user.password = std::move(password_hash);
+  user.email = "unit@example.com";
+  user.is_email_verified = true;
+  user.created_at = now;
+  user.password_updated_at = now;
+  return user;
+}
+
 class FakeSessionRepository final : public ports::SessionRepository {
  public:
   domain::Session Insert(
@@ -191,6 +206,18 @@ class FakeSessionRepository final : public ports::SessionRepository {
     return true;
   }
 
+  void RevokeAllByUserId(
+      ports::DbTransaction&,
+      std::string_view user_id
+  ) override {
+    for (auto& [_, session] : sessions) {
+      if (session.user_id == user_id && !session.revoked_at) {
+        session.revoked_at = std::chrono::system_clock::now();
+        session.is_active = false;
+      }
+    }
+  }
+
   bool RevokeAndReplace(
       ports::DbTransaction&,
       std::string_view session_id,
@@ -232,12 +259,16 @@ class FakeSessionRepository final : public ports::SessionRepository {
   std::map<std::string, domain::Session> sessions;
 };
 
-class UnusedUserRepository final : public ports::UserRepository {
+class FakeUserRepository final : public ports::UserRepository {
  public:
   [[nodiscard]] bool ExistsByUsername(std::string_view) override { return false; }
   [[nodiscard]] bool ExistsByEmail(std::string_view) override { return false; }
   [[nodiscard]] bool ExistsByPhone(std::string_view) override { return false; }
-  [[nodiscard]] std::optional<domain::User> FindById(std::string_view) override {
+  [[nodiscard]] std::optional<domain::User> FindById(std::string_view id) override {
+    const auto it = users.find(std::string{id});
+    if (it != users.end()) {
+      return it->second;
+    }
     return std::nullopt;
   }
   [[nodiscard]] std::optional<domain::User> FindByUsername(
@@ -272,10 +303,16 @@ class UnusedUserRepository final : public ports::UserRepository {
   void SoftDelete(std::string_view) override {}
   void UpdatePasswordHash(
       ports::DbTransaction&,
-      std::string_view,
-      std::string_view
-  ) override {}
-  void UpdatePasswordHash(std::string_view, std::string_view) override {}
+      std::string_view user_id,
+      std::string_view new_password_hash
+  ) override {
+    users.at(std::string{user_id}).password = std::string{new_password_hash};
+  }
+  void UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) override {
+    users.at(std::string{user_id}).password = std::string{new_password_hash};
+  }
+
+  std::map<std::string, domain::User> users;
 };
 
 class UnusedEmailOutboxRepository final : public ports::EmailOutboxRepository {
@@ -361,7 +398,7 @@ class UnusedVerificationCodeGenerator final
 
 struct AuthServiceFixture final {
   FakeTransactionManager tx_manager;
-  UnusedUserRepository user_repo;
+  FakeUserRepository user_repo;
   UnusedEmailOutboxRepository email_outbox_repo;
   UnusedEmailVerificationRepository email_verification_repo;
   FakePasswordHasher password_hasher;
@@ -471,6 +508,101 @@ UTEST(AuthServiceRefresh, RevokesTokenFamilyOnRefreshTokenReuse) {
 
   EXPECT_TRUE(
       fixture.session_repo.sessions.at("active-session-id").revoked_at.has_value()
+  );
+}
+
+UTEST(AuthServiceChangePassword, UpdatesPasswordHashAndRevokesAllUserSessions) {
+  AuthServiceFixture fixture;
+  fixture.user_repo.users.emplace(
+      "user-id",
+      MakeUser("user-id", "hash:CurrentPass123!")
+  );
+  fixture.session_repo.sessions.emplace(
+      "current-session-id",
+      MakeSession(
+          "current-session-id",
+          "user-id",
+          "family-id",
+          "hash:refresh-current-session-id"
+      )
+  );
+  fixture.session_repo.sessions.emplace(
+      "other-session-id",
+      MakeSession(
+          "other-session-id",
+          "user-id",
+          "family-id-2",
+          "hash:refresh-other-session-id"
+      )
+  );
+  fixture.session_repo.sessions.emplace(
+      "another-user-session-id",
+      MakeSession(
+          "another-user-session-id",
+          "another-user-id",
+          "family-id-3",
+          "hash:refresh-another-user-session-id"
+      )
+  );
+
+  fixture.service.ChangePassword(
+      contracts::AuthContext{
+          .user_id = "user-id",
+          .session_id = "current-session-id",
+      },
+      contracts::ChangePasswordCommand{
+          .current_password = "CurrentPass123!",
+          .new_password = "NewStrongPass123!",
+      }
+  );
+
+  EXPECT_EQ(fixture.user_repo.users.at("user-id").password,
+            "hash:NewStrongPass123!");
+  EXPECT_TRUE(
+      fixture.session_repo.sessions.at("current-session-id").revoked_at.has_value()
+  );
+  EXPECT_TRUE(
+      fixture.session_repo.sessions.at("other-session-id").revoked_at.has_value()
+  );
+  EXPECT_FALSE(
+      fixture.session_repo.sessions.at("another-user-session-id").revoked_at.has_value()
+  );
+}
+
+UTEST(AuthServiceChangePassword, RejectsInvalidCurrentPasswordWithoutRevokingSessions) {
+  AuthServiceFixture fixture;
+  fixture.user_repo.users.emplace(
+      "user-id",
+      MakeUser("user-id", "hash:CurrentPass123!")
+  );
+  fixture.session_repo.sessions.emplace(
+      "current-session-id",
+      MakeSession(
+          "current-session-id",
+          "user-id",
+          "family-id",
+          "hash:refresh-current-session-id"
+      )
+  );
+
+  EXPECT_THROW(
+      fixture.service.ChangePassword(
+          contracts::AuthContext{
+              .user_id = "user-id",
+              .session_id = "current-session-id",
+          },
+          contracts::ChangePasswordCommand{
+              .current_password = "WrongPass123!",
+              .new_password = "NewStrongPass123!",
+          }
+      ),
+      errors::InvalidCurrentPassword
+  );
+
+  EXPECT_EQ(fixture.user_repo.users.at("user-id").password,
+            "hash:CurrentPass123!");
+  EXPECT_FALSE(
+      fixture.session_repo.sessions.at("current-session-id").revoked_at.has_value()
   );
 }
 
