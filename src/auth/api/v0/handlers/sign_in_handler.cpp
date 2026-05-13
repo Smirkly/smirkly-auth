@@ -6,6 +6,7 @@
 #include <userver/server/http/http_response_cookie.hpp>
 
 #include <auth/api/v0/dto/sign_in_request.hpp>
+#include <auth/api/v0/utils/json_error.hpp>
 #include <auth/components/auth_service_component.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
@@ -73,23 +74,14 @@ namespace smirkly::auth::api::v0::handlers {
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
             return response.ExtractValue();
         } catch (const services::errors::SignInValidation &e) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = std::string{"sign in validation failed: "} + e.what();
-
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kBadRequest);
-            return response.ExtractValue();
+            return utils::ErrorResponse("auth.sign_in.validation_failed", e.what());
         } catch (const services::errors::InvalidCredentials &) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = "invalid credentials";
-
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return response.ExtractValue();
+            return utils::ErrorResponse("auth.invalid_credentials", "invalid credentials");
         } catch (const services::errors::EmailNotVerified &) {
-            userver::formats::json::ValueBuilder response;
-            response["message"] = "email is not verified";
-
             request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kForbidden);
-            return response.ExtractValue();
+            return utils::ErrorResponse("auth.email_not_verified", "email is not verified");
         }
     }
 }

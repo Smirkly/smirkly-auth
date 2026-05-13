@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <auth/domain/value_objects/email.hpp>
 #include <auth/domain/value_objects/phone.hpp>
@@ -31,6 +32,8 @@ namespace smirkly::auth::services::validation {
         explicit SignUpValidator(SignUpPolicy policy = {});
 
         [[nodiscard]] NormalizedSignUpInput ValidateAndNormalize(const contracts::SignUpCommand &cmd) const;
+
+        void ValidatePassword(std::string_view password) const;
 
     private:
         SignUpPolicy policy_;
