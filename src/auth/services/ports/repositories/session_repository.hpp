@@ -43,6 +43,11 @@ namespace smirkly::auth::services::ports {
             std::string_view user_id
         ) = 0;
 
+        virtual void RevokeAllByUserId(
+            DbTransaction &tx,
+            std::string_view user_id
+        ) = 0;
+
         virtual bool RevokeAndReplace(
             DbTransaction &tx,
             std::string_view session_id,

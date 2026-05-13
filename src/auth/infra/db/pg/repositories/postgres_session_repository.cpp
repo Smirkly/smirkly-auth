@@ -103,6 +103,18 @@ namespace smirkly::auth::infra::db::pg {
         return !res.IsEmpty();
     }
 
+    void PostgresSessionRepository::RevokeAllByUserId(
+        services::ports::DbTransaction &tx,
+        std::string_view user_id
+    ) {
+        auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::RevokeAllByUserId");
+
+        pg_tx.Native().Execute(
+            sql::kSessionsRevokeAllByUserId,
+            user_id
+        );
+    }
+
     bool PostgresSessionRepository::RevokeAndReplace(
         services::ports::DbTransaction &tx,
         std::string_view session_id,

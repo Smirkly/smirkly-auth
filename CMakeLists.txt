@@ -8,13 +8,12 @@ include(DownloadLibcurl)
 set(USERVER_PYTHON "/opt/homebrew/bin/python3.12"
         CACHE FILEPATH "Python for userver venvs")
 
-set(USERVER_FEATURE_REDIS ON)
 set(USERVER_FEATURE_POSTGRESQL ON)
 set(USERVER_FEATURE_PATCH_LIBPQ OFF)
 
 find_package(
         userver
-        COMPONENTS core postgresql redis
+        COMPONENTS core postgresql
         QUIET
 )
 if (NOT userver_FOUND)
@@ -78,7 +77,6 @@ target_link_libraries(
         userver::core
         userver::postgresql
         ${PROJECT_NAME}_sql
-        userver::redis
         bcrypt
         CURL::libcurl
         cpp-jwt
@@ -104,7 +102,6 @@ if (PROJECT_TEST_SOURCES)
             userver::core
             userver::utest
             userver::postgresql
-            userver::redis
     )
 
     # userver macro that adds gtest, filters, etc.

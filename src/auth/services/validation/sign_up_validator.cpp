@@ -27,25 +27,14 @@ namespace smirkly::auth::services::validation {
     SignUpValidator::SignUpValidator(SignUpPolicy policy) : policy_(std::move(policy)) {
     }
 
-    NormalizedSignUpInput
-    SignUpValidator::ValidateAndNormalize(const contracts::SignUpCommand &cmd) const {
-        if (policy_.require_email && !cmd.email) {
-            throw errors::SignUpValidation("email is required");
-        }
-        if (policy_.require_phone && !cmd.phone) {
-            throw errors::SignUpValidation("phone is required");
-        }
-        if (policy_.require_contact && !cmd.email && !cmd.phone) {
-            throw errors::SignUpValidation("email or phone is required");
-        }
-
-        if (cmd.password.empty()) {
+    void SignUpValidator::ValidatePassword(std::string_view password) const {
+        if (password.empty()) {
             throw errors::SignUpValidation("password is empty");
         }
-        if (cmd.password.size() < policy_.password_min_len) {
+        if (password.size() < policy_.password_min_len) {
             throw errors::SignUpValidation("password is too short");
         }
-        if (cmd.password.size() > policy_.password_max_len) {
+        if (password.size() > policy_.password_max_len) {
             throw errors::SignUpValidation("password is too long");
         }
 
@@ -54,7 +43,7 @@ namespace smirkly::auth::services::validation {
         bool has_digit = false;
         bool has_other = false;
 
-        for (const char c: cmd.password) {
+        for (const char c: password) {
             if (IsControlAscii(c) || c == '\x7f') {
                 throw errors::SignUpValidation("password must not contain control characters");
             }
@@ -72,6 +61,21 @@ namespace smirkly::auth::services::validation {
         if (complexity_classes < 3) {
             throw errors::SignUpValidation("password must include at least three character classes");
         }
+    }
+
+    NormalizedSignUpInput
+    SignUpValidator::ValidateAndNormalize(const contracts::SignUpCommand &cmd) const {
+        if (policy_.require_email && !cmd.email) {
+            throw errors::SignUpValidation("email is required");
+        }
+        if (policy_.require_phone && !cmd.phone) {
+            throw errors::SignUpValidation("phone is required");
+        }
+        if (policy_.require_contact && !cmd.email && !cmd.phone) {
+            throw errors::SignUpValidation("email or phone is required");
+        }
+
+        ValidatePassword(cmd.password);
 
         try {
             NormalizedSignUpInput input{

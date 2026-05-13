@@ -18,10 +18,6 @@ components_manager:
             blocking_task_processor: fs-task-processor
             sync-start: true
 
-        #redis-auth:
-        #    thread-pool-size: 4
-        #    secdist_alias: auth-redis
-
         auth-infra:
             postgres-component: postgres-auth
 
@@ -126,6 +122,16 @@ components_manager:
             method: POST
             task_processor: main-task-processor
 
+        handler-auth-logout:
+            path: /auth/v0/logout
+            method: POST
+            task_processor: main-task-processor
+
+        handler-auth-change-password:
+            path: /auth/v0/change-password
+            method: POST
+            task_processor: main-task-processor
+
         handler-auth-me:
             path: /auth/v0/me
             method: GET
@@ -134,6 +140,11 @@ components_manager:
         handler-auth-sessions:
             path: /auth/v0/sessions
             method: GET
+            task_processor: main-task-processor
+
+        handler-auth-sessions-revoke-all:
+            path: /auth/v0/sessions
+            method: DELETE
             task_processor: main-task-processor
 
         handler-auth-session-revoke:

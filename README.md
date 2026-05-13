@@ -9,13 +9,17 @@ Authentication microservice for the Smirkly platform, built with the [userver fr
 
 Implemented:
 - User registration (email + password) with persistence in Postgres
-- Sign-in issuing `{access_token, refresh_token}` (JWT)
+- Sign-in issuing an access token and an HttpOnly refresh-token cookie
+- Refresh-token storage, rotation, reuse detection, and session revocation
+- Current-session logout and all-sessions revocation
+- Password change with all-sessions revocation
 - Email verification flow: verification code generation and enqueueing email into outbox
+- Public JWKS endpoint for access-token verification
 
 Work in progress:
-- Session/device model and refresh-token lifecycle (storage/rotation/revocation)
-- Logout and token invalidation
-- Password change / reset flows
+- Password reset flow
+- Production deployment packaging and migration runner
+- Application-level rate limiting
 
 
 > Status: active development. APIs, configuration, and internal structure may change without backward compatibility guarantees.
@@ -123,7 +127,7 @@ Running the service locally
 
 After a successful build:
 
-Make sure Postgres and Redis are running and accessible
+Make sure Postgres is running and accessible
 
 Either via your local installation
 
@@ -176,6 +180,18 @@ ctest --output-on-failure
 
 New tests should be placed under tests/unit/… and will be picked up automatically by CMake if they match the configured
 glob (tests/unit/*.cpp).
+
+## Documentation
+
+Project documentation lives in `docs/`.
+
+- `docs/index.html` - service overview.
+- `docs/getting-started.html` - local setup and development workflow.
+- `docs/api.html` - Swagger UI for `openapi/auth-v0.yaml`.
+- `docs/architecture.html` - service architecture notes.
+- `docs/operations.html` - deployment and operations checklist.
+
+The `.github/workflows/pages.yml` workflow publishes the static docs site with GitHub Pages.
 
 ## License
 
