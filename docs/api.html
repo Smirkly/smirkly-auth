@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>API Reference | Smirkly Auth</title>
+    <meta name="description" content="Interactive OpenAPI reference for smirkly-auth.">
+    <link rel="stylesheet" href="assets/site.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+  </head>
+  <body class="swagger-shell">
+    <header class="swagger-header">
+      <div>
+        <h1>Smirkly Auth API</h1>
+        <p class="muted">OpenAPI contract served from <code id="openapi-source">openapi/auth-v0.yaml</code>.</p>
+      </div>
+      <nav class="actions" aria-label="API navigation">
+        <a class="button" href="index.html">Docs Home</a>
+        <a id="download-yaml" class="button button--primary" href="openapi/auth-v0.yaml">Download YAML</a>
+      </nav>
+    </header>
+
+    <main id="swagger-ui"></main>
+    <main id="local-file-notice" class="content" hidden>
+      <h1>Run the docs through a local HTTP server</h1>
+      <p class="lead">
+        Swagger UI loads the OpenAPI file with an HTTP request. Browsers do not reliably allow that
+        when this page is opened directly with <code>file://</code>.
+      </p>
+      <p>Preview the same site locally with:</p>
+      <pre><code>mkdir -p /tmp/smirkly-auth-docs/openapi
+cp -R docs/. /tmp/smirkly-auth-docs/
+cp openapi/auth-v0.yaml /tmp/smirkly-auth-docs/openapi/auth-v0.yaml
+python3 -m http.server 8088 --directory /tmp/smirkly-auth-docs</code></pre>
+      <p>Then open <code>http://localhost:8088/api.html</code>.</p>
+      <p>
+        The GitHub Pages workflow performs the same copy step before publishing, so this page works
+        normally on Pages.
+      </p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.addEventListener('load', function () {
+        var specUrl = 'openapi/auth-v0.yaml';
+        var localSpecUrl = '../openapi/auth-v0.yaml';
+        var isFile = window.location.protocol === 'file:';
+        var source = document.getElementById('openapi-source');
+        var download = document.getElementById('download-yaml');
+
+        if (isFile) {
+          source.textContent = localSpecUrl;
+          download.href = localSpecUrl;
+          document.getElementById('swagger-ui').hidden = true;
+          document.getElementById('local-file-notice').hidden = false;
+          return;
+        }
+
+        window.ui = SwaggerUIBundle({
+          url: specUrl,
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          displayOperationId: true,
+          defaultModelsExpandDepth: 1,
+          defaultModelExpandDepth: 2,
+          tryItOutEnabled: false
+        });
+      });
+    </script>
+  </body>
+</html>

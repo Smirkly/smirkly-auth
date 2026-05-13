@@ -181,6 +181,18 @@ ctest --output-on-failure
 New tests should be placed under tests/unit/… and will be picked up automatically by CMake if they match the configured
 glob (tests/unit/*.cpp).
 
+## Documentation
+
+Project documentation lives in `docs/`.
+
+- `docs/index.html` - service overview.
+- `docs/getting-started.html` - local setup and development workflow.
+- `docs/api.html` - Swagger UI for `openapi/auth-v0.yaml`.
+- `docs/architecture.html` - service architecture notes.
+- `docs/operations.html` - deployment and operations checklist.
+
+The `.github/workflows/pages.yml` workflow publishes the static docs site with GitHub Pages.
+
 ## License
 
 The original template is distributed under

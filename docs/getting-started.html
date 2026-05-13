@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Getting Started | Smirkly Auth</title>
+    <meta name="description" content="Local setup and development workflow for smirkly-auth.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html">Overview</a>
+          <a href="getting-started.html" aria-current="page">Getting Started</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="operations.html">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="content">
+          <p class="eyebrow">Development</p>
+          <h1>Getting Started</h1>
+          <p class="lead">
+            These steps bring up a local database, generate JWT keys, configure the service,
+            build it, and run tests.
+          </p>
+
+          <h2>Prerequisites</h2>
+          <ul>
+            <li>CMake, Ninja, a C++20 compiler, and Python.</li>
+            <li>Docker for local Postgres, or a compatible local Postgres instance.</li>
+            <li>Submodules initialized with <code>git submodule update --init</code>.</li>
+          </ul>
+
+          <h2>Local Environment</h2>
+          <p>Create a local <code>.env</code> for Docker Compose:</p>
+          <pre><code>POSTGRES_DB=smirkly_auth
+POSTGRES_USER=smirkly_auth
+POSTGRES_PASSWORD=smirkly_auth</code></pre>
+
+          <p>Create <code>configs/config_vars.yaml</code>. Keep this file untracked because it may contain secrets.</p>
+          <pre><code>worker-threads: 4
+worker-fs-threads: 2
+logger-level: info
+server-port: 8080
+
+AUTH_JWT_AUDIENCE: smirkly-api
+AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
+AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
+AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
+
+AUTH_SMTP_HOST: smtp.localhost
+AUTH_SMTP_PORT: 587
+AUTH_SMTP_TLS_MODE: starttls
+AUTH_SMTP_USERNAME: local-dev-user
+AUTH_SMTP_APP_PASSWORD: local-dev-password
+AUTH_SMTP_FROM_EMAIL: no-reply@localhost
+AUTH_SMTP_FROM_NAME: Smirkly</code></pre>
+
+          <h2>JWT Keys</h2>
+          <pre><code>mkdir -p configs/secrets
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+  -out configs/secrets/auth_jwt_private.pem
+openssl rsa -in configs/secrets/auth_jwt_private.pem \
+  -pubout -out configs/secrets/auth_jwt_public.pem
+chmod 600 configs/secrets/auth_jwt_private.pem</code></pre>
+
+          <h2>Database</h2>
+          <pre><code>docker compose up -d smirkly-postgres</code></pre>
+          <p>
+            The local compose file mounts <code>migrations/</code> into the Postgres init directory.
+            This is convenient for first boot only. Production environments should use an explicit
+            migration runner.
+          </p>
+
+          <h2>Build and Test</h2>
+          <pre><code>make cmake-debug
+make build-debug
+make test-debug</code></pre>
+
+          <p>Equivalent direct CMake workflow:</p>
+          <pre><code>cmake -S . -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build cmake-build-debug -j$(nproc)
+ctest --test-dir cmake-build-debug --output-on-failure</code></pre>
+
+          <h2>Run the Service</h2>
+          <pre><code>./cmake-build-debug/smirkly-auth \
+  --config ./configs/static_config.yaml</code></pre>
+
+          <div class="callout">
+            Do not commit real SMTP credentials, JWT private keys, database passwords, or production
+            hostnames into repository files. Use the deployment platform's secret store.
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
