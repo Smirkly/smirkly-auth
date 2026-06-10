@@ -1,10 +1,14 @@
 {
-  "containerEnv": {
-    "CCACHE_DIR": "/home/user/my_service/.ccache",
-    "CORES_DIR": "/cores",
-    "PREFIX": "${PREFIX:-~/.local}",
-    "SHELL": "/bin/bash"
-  },
+  "name": "smirkly-auth",
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "../docker-compose.devcontainer.yml"
+  ],
+  "service": "smirkly-auth-workspace",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "overrideCommand": false,
+  "remoteUser": "root",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,7 +21,7 @@
       "settings": {
         "clangd.arguments": [
           "--background-index",
-          "--compile-commands-dir=.vscode",
+          "--compile-commands-dir=build-debug",
           "--clang-tidy",
           "--completion-style=detailed",
           "--header-insertion=never"
@@ -26,22 +30,21 @@
         "cmake.automaticReconfigure": false,
         "cmake.configureOnEdit": false,
         "cmake.configureOnOpen": false,
-        "cmake.copyCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json"
+        "cmake.buildDirectory": "${workspaceFolder}/build-debug"
       }
     }
   },
   "forwardPorts": [
-    8080
+    8080,
+    5432
   ],
-  "image": "ghcr.io/userver-framework/ubuntu-22.04-userver-pg-dev",
-  "mounts": [],
-  "onCreateCommand": "sudo git config --global --add safe.directory /home/user/my_service",
-  "remoteUser": "user",
-  "runArgs": [
-    "--cap-add=SYS_PTRACE",
-    "--security-opt",
-    "seccomp=unconfined"
-  ],
-  "workspaceFolder": "/home/user/my_service",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/home/user/my_service,type=bind"
+  "portsAttributes": {
+    "8080": {
+      "label": "smirkly-auth"
+    },
+    "5432": {
+      "label": "Postgres"
+    }
+  },
+  "postCreateCommand": "git config --global --add safe.directory /workspace && cmake --preset debug -DUSERVER_PYTHON=/usr/bin/python3"
 }
