@@ -69,7 +69,7 @@
           <ul>
             <li>Serve the service only behind TLS.</li>
             <li>Keep JWT private keys, SMTP credentials, and database passwords in a secret store.</li>
-            <li>Use a migration runner for schema changes.</li>
+            <li>Run the <code>smirkly-migrate</code> job before starting new auth service containers.</li>
             <li>Disable test-only handlers and fake congestion-control settings in production configs.</li>
             <li>Configure reverse proxy request-size limits and rate limits for auth endpoints.</li>
             <li>Keep access logs free of passwords, refresh tokens, verification codes, and raw cookies.</li>

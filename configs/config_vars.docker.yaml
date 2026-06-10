@@ -1,0 +1,21 @@
+worker-threads: 4
+worker-fs-threads: 2
+logger-level: info
+
+is-testing: false
+
+server-port: 8080
+postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth
+
+AUTH_JWT_AUDIENCE: smirkly-api
+AUTH_JWT_KEY_ID: smirkly-auth-docker-rs256
+AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
+AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
+
+AUTH_SMTP_HOST: smtp.localhost
+AUTH_SMTP_PORT: 587
+AUTH_SMTP_TLS_MODE: starttls
+AUTH_SMTP_USERNAME: local-dev-user
+AUTH_SMTP_APP_PASSWORD: local-dev-password
+AUTH_SMTP_FROM_EMAIL: no-reply@localhost
+AUTH_SMTP_FROM_NAME: Smirkly

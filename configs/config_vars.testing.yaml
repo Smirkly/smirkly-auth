@@ -5,6 +5,7 @@ logger-level: debug
 is-testing: true
 
 server-port: 8080
+postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
 
 AUTH_JWT_AUDIENCE: smirkly-api
 AUTH_JWT_KEY_ID: smirkly-auth-testing-rs256

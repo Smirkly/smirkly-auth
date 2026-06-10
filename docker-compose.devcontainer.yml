@@ -1,0 +1,43 @@
+services:
+  smirkly-migrate-devcontainer:
+    image: ${SMIRKLY_MIGRATE_DEV_IMAGE:-migrate/migrate:v4.19.1}
+    depends_on:
+      smirkly-postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database=${MIGRATE_DATABASE_URL:-postgres://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth?sslmode=disable}
+      - up
+
+  smirkly-auth-workspace:
+    platform: ${SMIRKLY_DOCKER_PLATFORM:-linux/amd64}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        USERVER_IMAGE: ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-24.04-userver:latest}
+        MIGRATE_IMAGE: ${MIGRATE_IMAGE:-migrate/migrate:v4.19.1}
+    image: ${SMIRKLY_AUTH_DEV_IMAGE:-smirkly-auth:dev}
+    container_name: smirkly-auth-workspace
+    depends_on:
+      smirkly-migrate-devcontainer:
+        condition: service_completed_successfully
+    working_dir: /workspace
+    environment:
+      CCACHE_DIR: /workspace/.ccache
+      SHELL: /bin/bash
+      USERVER_ENABLE_STACK_USAGE_MONITOR: "0"
+    volumes:
+      - .:/workspace
+      - auth-build-debug:/workspace/build-debug
+      - auth-ccache:/workspace/.ccache
+      - ./configs/config_vars.docker.yaml:/workspace/configs/config_vars.yaml:ro
+    command: sleep infinity
+    init: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
