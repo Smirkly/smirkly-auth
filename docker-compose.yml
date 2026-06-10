@@ -1,16 +1,109 @@
-version: "3.9"
+x-auth-build: &auth-build
+  context: .
+  dockerfile: Dockerfile
+  args:
+    USERVER_IMAGE: ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-24.04-userver:latest}
+    MIGRATE_IMAGE: ${MIGRATE_IMAGE:-migrate/migrate:v4.19.1}
+
+x-migrate-command: &migrate-command
+  - -path=/migrations
+  - -database=${MIGRATE_DATABASE_URL:-postgres://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth?sslmode=disable}
+  - up
+
+x-auth-runtime: &auth-runtime
+  environment:
+    USERVER_ENABLE_STACK_USAGE_MONITOR: "0"
+  ports:
+    - "${SMIRKLY_AUTH_PORT:-8080}:8080"
 
 services:
   smirkly-postgres:
     image: postgres:16
     container_name: smirkly-postgres
-    restart: always
-    env_file: .env
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smirkly_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-smirkly_auth}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smirkly_auth}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  smirkly-migrate-dev:
+    profiles:
+      - dev
+    image: ${SMIRKLY_MIGRATE_DEV_IMAGE:-migrate/migrate:v4.19.1}
+    depends_on:
+      smirkly-postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations:ro
+    command: *migrate-command
+
+  smirkly-auth-dev:
+    <<: *auth-runtime
+    profiles:
+      - dev
+    depends_on:
+      smirkly-migrate-dev:
+        condition: service_completed_successfully
+    build:
+      <<: *auth-build
+      target: dev
+    image: ${SMIRKLY_AUTH_DEV_IMAGE:-smirkly-auth:dev}
+    container_name: smirkly-auth-dev
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - auth-build-debug:/workspace/build-debug
+      - auth-ccache:/workspace/.ccache
+      - ./configs/config_vars.docker.yaml:/workspace/configs/config_vars.yaml:ro
+    command:
+      - bash
+      - -lc
+      - |
+        cmake --preset debug -DUSERVER_PYTHON=/usr/bin/python3
+        cmake --build build-debug --parallel --target smirkly-auth
+        ./build-debug/smirkly-auth --config ./configs/static_config.yaml
+
+  smirkly-migrate:
+    profiles:
+      - prod
+    build:
+      <<: *auth-build
+      target: migrate
+    image: ${SMIRKLY_MIGRATE_IMAGE:-smirkly-auth-migrate:prod}
+    depends_on:
+      smirkly-postgres:
+        condition: service_healthy
+    command: *migrate-command
+
+  smirkly-auth:
+    <<: *auth-runtime
+    profiles:
+      - prod
+    depends_on:
+      smirkly-migrate:
+        condition: service_completed_successfully
+    build:
+      <<: *auth-build
+      target: prod
+    image: ${SMIRKLY_AUTH_IMAGE:-smirkly-auth:prod}
+    container_name: smirkly-auth
+    restart: unless-stopped
+    volumes:
+      - ./configs/config_vars.docker.yaml:/app/configs/config_vars.yaml:ro
+      - ./configs/secrets:/app/configs/secrets:ro
 
 volumes:
   pgdata:
+  auth-build-debug:
+  auth-ccache:

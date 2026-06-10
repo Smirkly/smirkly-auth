@@ -1,4 +1,4 @@
-config_vars: ../configs/config_vars.yaml
+config_vars: configs/config_vars.yaml
 
 components_manager:
     task_processors:                  # Task processor is an executor for coroutine tasks
@@ -14,7 +14,7 @@ components_manager:
     components:                       # Configuring components that were registered via component_list
 
         postgres-auth:
-            dbconnection: "postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth"
+            dbconnection: $postgres-dbconnection
             blocking_task_processor: fs-task-processor
             sync-start: true
 
