@@ -18,7 +18,7 @@ Implemented:
 
 Work in progress:
 - Password reset flow
-- Production deployment packaging and migration runner
+- Production deployment packaging hardening
 - Application-level rate limiting
 
 
@@ -50,6 +50,7 @@ Create a .env file in the project root with database settings, for example:
 POSTGRES_DB=smirkly_auth
 POSTGRES_USER=smirkly_auth
 POSTGRES_PASSWORD=smirkly_auth
+MIGRATE_DATABASE_URL=postgres://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth?sslmode=disable
 ```
 
 These values are used by local Postgres (e.g. via docker-compose.yml) and must match the connection settings in your
@@ -67,6 +68,7 @@ logger-level: info
 is-testing: false
 
 server-port: 8080
+postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
 
 AUTH_JWT_AUDIENCE: smirkly-api
 AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
@@ -122,6 +124,70 @@ make test-debug
 ```
 
 The resulting binary will be in build-debug/ (for debug preset).
+
+## Docker
+
+The compose file has two app profiles:
+
+```bash
+# Active development: source is mounted, build-debug is a Docker volume.
+# Runs smirkly-migrate-dev before starting the app.
+docker compose --profile dev up --build smirkly-auth-dev
+
+# Apply pending migrations manually, useful after adding a new migration.
+docker compose --profile dev run --rm smirkly-migrate-dev
+
+# Recompile after editing code without rebuilding the Docker image.
+docker compose exec smirkly-auth-dev cmake --build build-debug --parallel --target smirkly-auth
+docker compose restart smirkly-auth-dev
+
+# Production-style run: release binary is baked into the image, no source mount.
+# Runs smirkly-migrate before starting the app.
+docker compose --profile prod up --build -d smirkly-auth
+```
+
+By default Compose does not force a CPU architecture; Docker uses the host's native platform. This is the right default
+for production Linux hosts. If you are on Apple Silicon and the selected userver base image has no `linux/arm64` build,
+force `linux/amd64` locally with the override file:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.linux-amd64.yml --profile dev up --build smirkly-auth-dev
+```
+
+For repeated local use, put this in your untracked `.env`:
+
+```dotenv
+COMPOSE_FILE=docker-compose.yml:docker-compose.linux-amd64.yml
+```
+
+Both profiles use `smirkly-postgres` and run migrations with `golang-migrate` before the auth service starts. Dev uses
+the upstream `migrate/migrate` image with `./migrations` mounted read-only. Prod builds a `smirkly-auth-migrate:prod`
+image that contains the migration files, so the production runner does not need source code mounted.
+
+### Devcontainer
+
+The repository also has a VS Code devcontainer for onboarding and local IDE work. It is not part of production. The
+devcontainer uses the same `Dockerfile` `dev` target, starts Postgres, runs migrations, and then opens a workspace
+container that stays alive for interactive commands.
+
+Open the repository in VS Code and run `Dev Containers: Reopen in Container`. Inside the container:
+
+```bash
+cmake --build build-debug --parallel --target smirkly-auth
+./build-debug/smirkly-auth --config ./configs/static_config.yaml
+```
+
+The devcontainer compose overlay defaults to `linux/amd64` because the current userver base image may not provide an
+Apple Silicon build. This does not affect production compose. Override it with `SMIRKLY_DOCKER_PLATFORM` if needed.
+
+Docker-specific runtime values live in `configs/config_vars.docker.yaml`; for real production, provide your own file with
+production DB, JWT, and SMTP values and mount it to `/app/configs/config_vars.yaml`. If you override the Postgres
+credentials through `.env`, keep both `MIGRATE_DATABASE_URL` and the `postgres-dbconnection` value in
+`configs/config_vars.docker.yaml` in sync.
+
+If your local `pgdata` volume was created before the migration runner was added, it may already contain tables but not
+the `schema_migrations` version table. For local development, recreate that database volume before the first
+`smirkly-migrate-dev` run, or baseline it manually after verifying the schema.
 
 Running the service locally
 

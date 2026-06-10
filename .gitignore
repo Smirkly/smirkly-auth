@@ -40,5 +40,6 @@ volumes/
 
 Makefile.local
 CMakeUserPresets.json
+docker-compose.override.yml
 
 __pycache__/

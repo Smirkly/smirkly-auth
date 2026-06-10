@@ -43,13 +43,15 @@
           <p>Create a local <code>.env</code> for Docker Compose:</p>
           <pre><code>POSTGRES_DB=smirkly_auth
 POSTGRES_USER=smirkly_auth
-POSTGRES_PASSWORD=smirkly_auth</code></pre>
+POSTGRES_PASSWORD=smirkly_auth
+MIGRATE_DATABASE_URL=postgres://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth?sslmode=disable</code></pre>
 
           <p>Create <code>configs/config_vars.yaml</code>. Keep this file untracked because it may contain secrets.</p>
           <pre><code>worker-threads: 4
 worker-fs-threads: 2
 logger-level: info
 server-port: 8080
+postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
 
 AUTH_JWT_AUDIENCE: smirkly-api
 AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
@@ -73,17 +75,35 @@ openssl rsa -in configs/secrets/auth_jwt_private.pem \
 chmod 600 configs/secrets/auth_jwt_private.pem</code></pre>
 
           <h2>Database</h2>
-          <pre><code>docker compose up -d smirkly-postgres</code></pre>
+          <pre><code>docker compose up -d smirkly-postgres
+docker compose --profile dev run --rm smirkly-migrate-dev</code></pre>
           <p>
-            The local compose file mounts <code>migrations/</code> into the Postgres init directory.
-            This is convenient for first boot only. Production environments should use an explicit
-            migration runner.
+            The migration runner applies pending <code>*.up.sql</code> files and tracks the schema version in Postgres.
+            The Postgres init directory is not used for application schema migrations.
+            Existing local databases created by the old init-directory flow should be recreated or baselined manually.
           </p>
 
           <h2>Build and Test</h2>
           <pre><code>make cmake-debug
 make build-debug
 make test-debug</code></pre>
+
+          <h2>Docker</h2>
+          <pre><code>docker compose --profile dev up --build smirkly-auth-dev
+docker compose --profile dev run --rm smirkly-migrate-dev
+docker compose exec smirkly-auth-dev cmake --build build-debug --parallel --target smirkly-auth
+docker compose restart smirkly-auth-dev
+
+docker compose --profile prod up --build -d smirkly-auth</code></pre>
+          <p>
+            The dev profile mounts the source tree and keeps <code>build-debug</code> in a Docker volume.
+            The prod profile builds release app and migration images and runs without mounting source code.
+          </p>
+          <p>
+            Compose uses the host's native platform by default. On Apple Silicon, if the userver base image has no
+            <code>linux/arm64</code> build, run with
+            <code>-f docker-compose.yml -f docker-compose.linux-amd64.yml</code> to force <code>linux/amd64</code>.
+          </p>
 
           <p>Equivalent direct CMake workflow:</p>
           <pre><code>cmake -S . -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug

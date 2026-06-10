@@ -1,0 +1,6 @@
+services:
+  smirkly-auth-dev:
+    platform: linux/amd64
+
+  smirkly-auth:
+    platform: linux/amd64
