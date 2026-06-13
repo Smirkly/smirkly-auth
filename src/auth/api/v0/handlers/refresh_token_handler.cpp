@@ -6,8 +6,9 @@
 #include <userver/server/http/http_response_cookie.hpp>
 
 #include <auth/api/v0/utils/json_error.hpp>
+#include <auth/components/auth_http_component.hpp>
 #include <auth/components/auth_service_component.hpp>
-#include <auth/infra/mapping/dto_mappers.hpp>
+#include <auth/infra/http/request_meta_extractor.hpp>
 #include <auth/services/errors/refresh_errors.hpp>
 
 
@@ -19,6 +20,9 @@ namespace smirkly::auth::api::v0::handlers {
         : HttpHandlerJsonBase(config, context),
           auth_service_(
               context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetAuthService()
+          ),
+          request_meta_extractor_(
+              context.FindComponent<smirkly::auth::components::AuthHttpComponent>().GetRequestMetaExtractor()
           ) {
     }
 
@@ -35,7 +39,7 @@ namespace smirkly::auth::api::v0::handlers {
                 return utils::ErrorResponse("auth.invalid_refresh_token", "invalid refresh token");
             }
 
-            const auto meta = infra::mapping::ToRequestMeta(request);
+            const auto meta = request_meta_extractor_.Extract(request);
 
             const services::contracts::RefreshCommand cmd = {
                 .refresh_token = std::string{refresh_token}
@@ -49,6 +53,7 @@ namespace smirkly::auth::api::v0::handlers {
                     .SetSecure()
                     .SetPath("/auth/v0/refresh")
                     .SetSameSite("Strict")
+                    .SetMaxAge(result.refresh_token_max_age)
             );
 
             userver::formats::json::ValueBuilder response;

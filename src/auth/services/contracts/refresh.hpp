@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 
 namespace smirkly::auth::services::contracts {
@@ -11,5 +12,6 @@ namespace smirkly::auth::services::contracts {
         std::string access_token;
         std::string refresh_token;
         std::string session_id;
+        std::chrono::seconds refresh_token_max_age;
     };
 }

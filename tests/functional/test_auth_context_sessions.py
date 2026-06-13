@@ -1,4 +1,8 @@
+from datetime import datetime, timedelta, timezone
 import uuid
+
+
+REFRESH_COOKIE_MAX_AGE_SECONDS = 2592000
 
 
 async def _create_signed_in_user(service_client):
@@ -25,6 +29,10 @@ async def _create_signed_in_user(service_client):
         },
     )
     assert sign_in_response.status == 200
+    assert (
+        f"Max-Age={REFRESH_COOKIE_MAX_AGE_SECONDS}"
+        in sign_in_response.headers["Set-Cookie"]
+    )
 
     body = sign_in_response.json()
     return {
@@ -48,6 +56,39 @@ async def test_me_returns_current_user(service_client):
     body = response.json()
     assert body["user"]["username"] == account["username"]
     assert body["session_id"] == account["session_id"]
+
+
+async def test_authenticated_request_updates_stale_session_last_used(
+    service_client,
+    pgsql,
+):
+    account = await _create_signed_in_user(service_client)
+    cursor = pgsql["auth"].cursor()
+    stale_last_used = datetime.now(timezone.utc) - timedelta(minutes=10)
+
+    cursor.execute(
+        "UPDATE sessions SET last_used_at = %s WHERE id = %s::uuid",
+        (stale_last_used, account["session_id"]),
+    )
+    cursor.execute(
+        "SELECT last_used_at FROM sessions WHERE id = %s::uuid",
+        (account["session_id"],),
+    )
+    before_request = cursor.fetchone()[0]
+
+    response = await service_client.get(
+        "/auth/v0/me",
+        headers={"Authorization": f"Bearer {account['access_token']}"},
+    )
+    assert response.status == 200
+
+    cursor.execute(
+        "SELECT last_used_at FROM sessions WHERE id = %s::uuid",
+        (account["session_id"],),
+    )
+    after_request = cursor.fetchone()[0]
+
+    assert after_request > before_request
 
 
 async def test_sessions_list_and_revoke_current_session(service_client):
@@ -94,6 +135,10 @@ async def test_refresh_rotates_session_and_detects_reuse(service_client):
 
     assert new_session_id != account["session_id"]
     assert refresh_response.headers["Set-Cookie"].startswith("refresh_token=")
+    assert (
+        f"Max-Age={REFRESH_COOKIE_MAX_AGE_SECONDS}"
+        in refresh_response.headers["Set-Cookie"]
+    )
 
     old_access_response = await service_client.get(
         "/auth/v0/me",

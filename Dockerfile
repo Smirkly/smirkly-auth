@@ -35,4 +35,4 @@ COPY --from=builder /opt/smirkly-auth/etc/smirkly-auth /app/configs
 EXPOSE 8080
 
 ENTRYPOINT ["/app/bin/smirkly-auth"]
-CMD ["--config", "./configs/static_config.yaml"]
+CMD ["--config", "./configs/static_config.prod.yaml"]

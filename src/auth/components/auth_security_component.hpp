@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -54,6 +55,8 @@ class AuthSecurityComponent final
   const services::ports::support::IdGenerator& GetIdGenerator() const noexcept;
 
   const std::string& GetPublicJwksJson() const noexcept;
+
+  std::chrono::seconds GetRefreshTokenTtl() const noexcept;
 
  private:
   struct Impl;

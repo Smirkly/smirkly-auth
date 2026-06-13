@@ -76,7 +76,7 @@ namespace smirkly::auth::components {
                 return;
             }
 
-            const auto tp_name = cfg["task_processor"].As<std::string>("main-task-processor");
+            const auto tp_name = cfg["task_processor"].As<std::string>("email-outbox-task-processor");
             auto &tp = ctx.GetTaskProcessor(tp_name);
 
             const auto from_email = cfg["smtp"]["from_email"].As<std::string>();
@@ -147,7 +147,7 @@ properties:
   task_processor:
     type: string
     description: Task processor name for worker periodic task
-    default: main-task-processor
+    default: email-outbox-task-processor
 
   poll_interval_ms:
     type: integer

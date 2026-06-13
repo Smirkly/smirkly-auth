@@ -52,24 +52,16 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /auth/v0/verify-email:
-    get:
+    post:
       tags: [Auth]
       operationId: verifyEmail
       summary: Verify a user email by code
-      parameters:
-        - name: email
-          in: query
-          required: true
-          schema:
-            type: string
-            format: email
-            maxLength: 320
-        - name: code
-          in: query
-          required: true
-          schema:
-            type: string
-            pattern: '^[0-9]{6}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
       responses:
         '204':
           description: Email verified, or it was already verified
@@ -79,6 +71,12 @@ paths:
           description: User was not found
         '410':
           description: Verification code expired or was not found
+        '429':
+          description: Too many verification attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /auth/v0/sign-in:
     post:
@@ -106,7 +104,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Email is not verified
+          description: Email is not verified when sign-in policy requires verified email addresses
           content:
             application/json:
               schema:
@@ -276,10 +274,10 @@ components:
 
   headers:
     RefreshTokenCookie:
-      description: HttpOnly Secure refresh-token cookie scoped to `/auth/v0/refresh`.
+      description: HttpOnly Secure refresh-token cookie scoped to `/auth/v0/refresh`; Max-Age matches the configured refresh-token TTL.
       schema:
         type: string
-      example: refresh_token=eyJ...; Path=/auth/v0/refresh; HttpOnly; Secure; SameSite=Strict
+      example: refresh_token=eyJ...; Max-Age=2592000; Path=/auth/v0/refresh; HttpOnly; Secure; SameSite=Strict
     ClearRefreshTokenCookie:
       description: Expired refresh-token cookie.
       schema:
@@ -400,6 +398,19 @@ components:
         password:
           type: string
           format: password
+
+    VerifyEmailRequest:
+      type: object
+      required: [email, code]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
 
     ChangePasswordRequest:
       type: object

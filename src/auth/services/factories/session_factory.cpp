@@ -9,7 +9,8 @@ namespace smirkly::auth::services::factories {
         std::string device_id,
         std::string refresh_token_hash,
         std::string token_family_id,
-        const contracts::RequestMeta &meta
+        const contracts::RequestMeta &meta,
+        std::chrono::seconds refresh_token_ttl
     ) {
         return ports::NewSessionData{
             .id = std::move(session_id),
@@ -18,7 +19,7 @@ namespace smirkly::auth::services::factories {
             .refresh_token_hash = std::move(refresh_token_hash),
             .ip = meta.ip,
             .user_agent = meta.user_agent,
-            .expires_at = std::chrono::system_clock::now() + std::chrono::hours{24 * 30},
+            .expires_at = std::chrono::system_clock::now() + refresh_token_ttl,
             .token_family_id = std::move(token_family_id),
             .replaced_by_session_id = std::nullopt,
         };
@@ -28,7 +29,8 @@ namespace smirkly::auth::services::factories {
         std::string session_id,
         const domain::models::Session &previous_session,
         std::string refresh_token_hash,
-        const contracts::RequestMeta &meta
+        const contracts::RequestMeta &meta,
+        std::chrono::seconds refresh_token_ttl
     ) {
         return ports::NewSessionData{
             .id = std::move(session_id),
@@ -37,7 +39,7 @@ namespace smirkly::auth::services::factories {
             .refresh_token_hash = std::move(refresh_token_hash),
             .ip = meta.ip ? meta.ip : previous_session.ip,
             .user_agent = meta.user_agent ? meta.user_agent : previous_session.user_agent,
-            .expires_at = std::chrono::system_clock::now() + std::chrono::hours{24 * 30},
+            .expires_at = std::chrono::system_clock::now() + refresh_token_ttl,
             .token_family_id = previous_session.token_family_id,
             .replaced_by_session_id = std::nullopt,
         };

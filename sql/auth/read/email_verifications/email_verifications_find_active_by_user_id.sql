@@ -12,5 +12,6 @@ FROM email_verifications
 WHERE user_id = $1::uuid
   AND used_at IS NULL
   AND expires_at > $2
+  AND attempts < $3
 ORDER BY created_at DESC
 LIMIT 1;

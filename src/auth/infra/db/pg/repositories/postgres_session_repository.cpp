@@ -12,14 +12,25 @@
 
 
 namespace smirkly::auth::infra::db::pg {
+    namespace pgsql = USERVER_NAMESPACE::storages::postgres;
+    namespace ports = services::ports;
+
+    namespace {
+        pgsql::ClusterHostType ToPgHost(ports::ReadConsistency consistency) {
+            return consistency == ports::ReadConsistency::kStrong
+                       ? pgsql::ClusterHostType::kMaster
+                       : pgsql::ClusterHostType::kSlave;
+        }
+    }
+
     PostgresSessionRepository::PostgresSessionRepository(
         USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster)
         : pg_cluster_(std::move(pg_cluster)) {
     }
 
     domain::models::Session PostgresSessionRepository::Insert(
-        services::ports::DbTransaction &tx,
-        const services::ports::NewSessionData &data) {
+        ports::DbTransaction &tx,
+        const ports::NewSessionData &data) {
         auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::Insert");
 
         const auto res = pg_tx.Native().Execute(
@@ -40,9 +51,11 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     std::optional<domain::models::Session>
-    PostgresSessionRepository::FindById(std::string_view session_id) {
+    PostgresSessionRepository::FindById(
+        std::string_view session_id,
+        ports::ReadConsistency consistency) {
         const auto res = pg_cluster_->Execute(
-            userver::storages::postgres::ClusterHostType::kSlave,
+            ToPgHost(consistency),
             sql::kSessionsSelectById,
             session_id
         );
@@ -56,9 +69,11 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     std::vector<domain::models::Session>
-    PostgresSessionRepository::ListActiveByUserId(std::string_view user_id) {
+    PostgresSessionRepository::ListActiveByUserId(
+        std::string_view user_id,
+        ports::ReadConsistency consistency) {
         const auto res = pg_cluster_->Execute(
-            userver::storages::postgres::ClusterHostType::kSlave,
+            ToPgHost(consistency),
             sql::kSessionsSelectActiveByUserId,
             user_id
         );
@@ -76,7 +91,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresSessionRepository::Revoke(
-        services::ports::DbTransaction &tx,
+        ports::DbTransaction &tx,
         std::string_view session_id
     ) {
         auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::Revoke");
@@ -88,7 +103,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     bool PostgresSessionRepository::RevokeByUserId(
-        services::ports::DbTransaction &tx,
+        ports::DbTransaction &tx,
         std::string_view session_id,
         std::string_view user_id
     ) {
@@ -104,7 +119,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresSessionRepository::RevokeAllByUserId(
-        services::ports::DbTransaction &tx,
+        ports::DbTransaction &tx,
         std::string_view user_id
     ) {
         auto &pg_tx = AsPgTx(tx, "PostgresSessionRepository::RevokeAllByUserId");
@@ -116,7 +131,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     bool PostgresSessionRepository::RevokeAndReplace(
-        services::ports::DbTransaction &tx,
+        ports::DbTransaction &tx,
         std::string_view session_id,
         std::string_view replacement_session_id
     ) {
@@ -132,7 +147,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresSessionRepository::RevokeByTokenFamily(
-        services::ports::DbTransaction &tx,
+        ports::DbTransaction &tx,
         std::string_view user_id,
         std::string_view token_family_id
     ) {
@@ -146,7 +161,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     void PostgresSessionRepository::UpdateLastUsed(
-        services::ports::DbTransaction &tx,
+        ports::DbTransaction &tx,
         std::string_view session_id,
         std::chrono::system_clock::time_point last_used_at
     ) {
