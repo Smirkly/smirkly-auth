@@ -1,5 +1,8 @@
 pycodestyle
-pytest
+pytest<9.0
+requests>=2.28.0
+websockets>=11.0.3,<13.0.0
+zstd>=1.5.5.0
 yandex-taxi-testsuite[postgresql-binary]
 psycopg2-binary
 pytest-asyncio
