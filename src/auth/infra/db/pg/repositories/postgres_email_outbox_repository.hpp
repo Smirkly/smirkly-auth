@@ -23,7 +23,7 @@ namespace smirkly::auth::infra::db::pg {
 
         std::vector<services::ports::EmailOutboxEntry> ClaimBatch(
             services::ports::DbTransaction &tx,
-            std::size_t next_attempt,
+            std::size_t batch_size,
             std::chrono::system_clock::time_point now,
             std::chrono::seconds stuck_timeout,
             std::size_t max_attempts
@@ -39,7 +39,6 @@ namespace smirkly::auth::infra::db::pg {
         void Reschedule(
             services::ports::DbTransaction &tx,
             std::string_view id,
-            std::size_t next_attempt,
             std::chrono::system_clock::time_point next_at,
             std::string_view last_error
         ) override;

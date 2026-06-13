@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -9,7 +10,7 @@
 namespace smirkly::auth::infra::db::pg {
     class PgTransaction;
 
-    inline PgTransaction &AsPgTx(services::ports::DbTransaction &tx, std::string_view where) {
+    inline PgTransaction &AsPgTx(services::ports::DbTransaction &tx, [[maybe_unused]] std::string_view where) {
 #ifdef NDEBUG
         auto *pg_tx = dynamic_cast<PgTransaction *>(&tx);
         if (!pg_tx) {
@@ -23,7 +24,8 @@ namespace smirkly::auth::infra::db::pg {
 #endif
     }
 
-    inline const PgTransaction &AsPgTx(const services::ports::DbTransaction &tx, std::string_view where) {
+    inline const PgTransaction &AsPgTx(const services::ports::DbTransaction &tx,
+                                       [[maybe_unused]] std::string_view where) {
 #ifdef NDEBUG
         auto *pg_tx = dynamic_cast<const PgTransaction *>(&tx);
         if (!pg_tx) {

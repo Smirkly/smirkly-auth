@@ -260,7 +260,7 @@ namespace smirkly::auth::services::usecases {
         auto tx = transaction_manager_.Begin("auth.sign_in");
 
         auto new_device_data = factories::DeviceFactory::WebDevice(user.id, meta);
-        auto device = device_repo.Insert(*tx, new_device_data);
+        auto device = device_repo_.Insert(*tx, new_device_data);
 
         auto new_session_data = factories::SessionFactory::CreateForSignIn(
             session_id,
@@ -272,7 +272,7 @@ namespace smirkly::auth::services::usecases {
             session_policy_.refresh_token_ttl
         );
 
-        domain::models::Session session = session_repo.Insert(*tx, new_session_data);
+        domain::models::Session session = session_repo_.Insert(*tx, new_session_data);
         tx->Commit();
 
         contracts::SignInResult result = {
@@ -319,7 +319,7 @@ namespace smirkly::auth::services::usecases {
 
             if (reused_refresh_token) {
                 auto tx = transaction_manager_.Begin("auth.refresh.reuse_detected");
-                session_repo.RevokeByTokenFamily(*tx, session.user_id, session.token_family_id);
+                session_repo_.RevokeByTokenFamily(*tx, session.user_id, session.token_family_id);
                 tx->Commit();
 
                 throw errors::RefreshTokenReuseDetected("refresh token reuse detected");
@@ -358,8 +358,8 @@ namespace smirkly::auth::services::usecases {
         );
 
         auto tx = transaction_manager_.Begin("auth.refresh");
-        const auto replacement_session = session_repo.Insert(*tx, replacement_session_data);
-        const bool old_session_revoked = session_repo.RevokeAndReplace(
+        const auto replacement_session = session_repo_.Insert(*tx, replacement_session_data);
+        const bool old_session_revoked = session_repo_.RevokeAndReplace(
             *tx,
             session.id,
             replacement_session.id
@@ -456,7 +456,7 @@ namespace smirkly::auth::services::usecases {
         }
 
         auto tx = transaction_manager_.Begin("auth.sessions.revoke");
-        session_repo.RevokeByUserId(*tx, session_id, context.user_id);
+        session_repo_.RevokeByUserId(*tx, session_id, context.user_id);
         tx->Commit();
     }
 

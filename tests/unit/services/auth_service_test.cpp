@@ -423,7 +423,6 @@ class UnusedEmailOutboxRepository final : public ports::EmailOutboxRepository {
   void Reschedule(
       ports::DbTransaction&,
       std::string_view,
-      std::size_t,
       std::chrono::system_clock::time_point,
       std::string_view
   ) override {}

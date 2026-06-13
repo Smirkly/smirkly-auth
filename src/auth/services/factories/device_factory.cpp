@@ -5,7 +5,7 @@
 namespace smirkly::auth::services::factories {
     ports::NewDeviceData DeviceFactory::WebDevice(
         std::string user_id,
-        const contracts::RequestMeta &meta
+        const contracts::RequestMeta &
     ) {
         return ports::NewDeviceData{
             .user_id = std::move(user_id),
