@@ -14,7 +14,9 @@ USERVER_NAMESPACE_BEGIN
 USERVER_NAMESPACE_END
 
 namespace smirkly::auth::infra::db::pg {
-    class PostgresUserRepository : public services::ports::UserRepository {
+    namespace ports = services::ports;
+
+    class PostgresUserRepository : public ports::UserRepository {
     public:
         explicit PostgresUserRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster);
 
@@ -24,39 +26,51 @@ namespace smirkly::auth::infra::db::pg {
 
         [[nodiscard]] bool ExistsByPhone(std::string_view phone) override;
 
-        [[nodiscard]] std::optional<domain::models::User> FindById(std::string_view id) override;
+        [[nodiscard]] std::optional<domain::models::User> FindById(
+            std::string_view id,
+            ports::ReadConsistency consistency
+        ) override;
 
-        [[nodiscard]] std::optional<domain::models::User> FindByUsername(std::string_view username) override;
+        [[nodiscard]] std::optional<domain::models::User> FindByUsername(
+            std::string_view username,
+            ports::ReadConsistency consistency
+        ) override;
 
-        [[nodiscard]] std::optional<domain::models::User> FindByEmail(std::string_view email) override;
+        [[nodiscard]] std::optional<domain::models::User> FindByEmail(
+            std::string_view email,
+            ports::ReadConsistency consistency
+        ) override;
 
-        [[nodiscard]] std::optional<domain::models::User> FindByPhone(std::string_view phone) override;
+        [[nodiscard]] std::optional<domain::models::User> FindByPhone(
+            std::string_view phone,
+            ports::ReadConsistency consistency
+        ) override;
 
 
-        [[nodiscard]] domain::models::User Insert(services::ports::DbTransaction &tx,
-                                                  const services::ports::NewUserData &data) override;
+        [[nodiscard]] domain::models::User Insert(ports::DbTransaction &tx,
+                                                  const ports::NewUserData &data) override;
 
-        [[nodiscard]] domain::models::User Insert(const services::ports::NewUserData &data) override;
+        [[nodiscard]] domain::models::User Insert(const ports::NewUserData &data) override;
 
 
-        void SetEmailVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+        void SetEmailVerified(ports::DbTransaction &tx, std::string_view user_id,
                               bool verified) override;
 
         void SetEmailVerified(std::string_view user_id, bool verified) override;
 
 
-        void SetPhoneVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+        void SetPhoneVerified(ports::DbTransaction &tx, std::string_view user_id,
                               bool verified) override;
 
         void SetPhoneVerified(std::string_view user_id, bool verified) override;
 
 
-        void SoftDelete(services::ports::DbTransaction &tx, std::string_view user_id) override;
+        void SoftDelete(ports::DbTransaction &tx, std::string_view user_id) override;
 
         void SoftDelete(std::string_view user_id) override;
 
 
-        void UpdatePasswordHash(services::ports::DbTransaction &tx, std::string_view user_id,
+        void UpdatePasswordHash(ports::DbTransaction &tx, std::string_view user_id,
                                 std::string_view new_password_hash) override;
 
         void UpdatePasswordHash(std::string_view user_id, std::string_view new_password_hash) override;

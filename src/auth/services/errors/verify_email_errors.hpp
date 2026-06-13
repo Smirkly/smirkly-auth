@@ -26,4 +26,8 @@ namespace smirkly::auth::services::errors {
     struct AlreadyVerified : VerifyEmailError {
         using VerifyEmailError::VerifyEmailError;
     };
+
+    struct TooManyVerificationAttempts : VerifyEmailError {
+        using VerifyEmailError::VerifyEmailError;
+    };
 }

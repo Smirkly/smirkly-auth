@@ -4,6 +4,10 @@
 
 #include <auth/services/usecases/auth_service.hpp>
 
+namespace smirkly::auth::infra::http {
+    class RequestMetaExtractor;
+}
+
 namespace smirkly::auth::api::v0::handlers {
     class SignInHandler final : public userver::server::handlers::HttpHandlerJsonBase {
     public:
@@ -23,5 +27,6 @@ namespace smirkly::auth::api::v0::handlers {
 
     private:
         smirkly::auth::services::usecases::AuthService &auth_service_;
+        smirkly::auth::infra::http::RequestMetaExtractor &request_meta_extractor_;
     };
 }

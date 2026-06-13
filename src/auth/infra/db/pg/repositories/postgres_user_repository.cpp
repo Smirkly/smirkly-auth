@@ -13,6 +13,15 @@
 
 namespace smirkly::auth::infra::db::pg {
     namespace pgsql = USERVER_NAMESPACE::storages::postgres;
+    namespace ports = services::ports;
+
+    namespace {
+        pgsql::ClusterHostType ToPgHost(ports::ReadConsistency consistency) {
+            return consistency == ports::ReadConsistency::kStrong
+                       ? pgsql::ClusterHostType::kMaster
+                       : pgsql::ClusterHostType::kSlave;
+        }
+    }
 
     PostgresUserRepository::PostgresUserRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster)
         : pg_cluster_(std::move(pg_cluster)) {
@@ -45,9 +54,11 @@ namespace smirkly::auth::infra::db::pg {
         return res.AsSingleRow<bool>();
     }
 
-    std::optional<domain::models::User> PostgresUserRepository::FindById(std::string_view id) {
+    std::optional<domain::models::User> PostgresUserRepository::FindById(
+        std::string_view id,
+        ports::ReadConsistency consistency) {
         const auto res = pg_cluster_->Execute(
-            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            ToPgHost(consistency),
             sql::kUsersSelectById,
             id
         );
@@ -61,9 +72,11 @@ namespace smirkly::auth::infra::db::pg {
     }
 
     std::optional<domain::models::User>
-    PostgresUserRepository::FindByUsername(std::string_view username) {
+    PostgresUserRepository::FindByUsername(
+        std::string_view username,
+        ports::ReadConsistency consistency) {
         const auto res = pg_cluster_->Execute(
-            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            ToPgHost(consistency),
             sql::kUsersSelectByUsername,
             username
         );
@@ -76,9 +89,11 @@ namespace smirkly::auth::infra::db::pg {
         return mappers::ToDomain(row);
     }
 
-    std::optional<domain::models::User> PostgresUserRepository::FindByEmail(std::string_view email) {
+    std::optional<domain::models::User> PostgresUserRepository::FindByEmail(
+        std::string_view email,
+        ports::ReadConsistency consistency) {
         const auto res = pg_cluster_->Execute(
-            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            ToPgHost(consistency),
             sql::kUsersSelectByEmail,
             email
         );
@@ -91,9 +106,11 @@ namespace smirkly::auth::infra::db::pg {
         return mappers::ToDomain(row);
     }
 
-    std::optional<domain::models::User> PostgresUserRepository::FindByPhone(std::string_view phone) {
+    std::optional<domain::models::User> PostgresUserRepository::FindByPhone(
+        std::string_view phone,
+        ports::ReadConsistency consistency) {
         const auto res = pg_cluster_->Execute(
-            USERVER_NAMESPACE::storages::postgres::ClusterHostType::kSlave,
+            ToPgHost(consistency),
             sql::kUsersSelectByPhone,
             phone
         );
@@ -107,8 +124,8 @@ namespace smirkly::auth::infra::db::pg {
     }
 
 
-    domain::models::User PostgresUserRepository::Insert(services::ports::DbTransaction &tx,
-                                                        const services::ports::NewUserData &data) {
+    domain::models::User PostgresUserRepository::Insert(ports::DbTransaction &tx,
+                                                        const ports::NewUserData &data) {
         try {
             auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::Insert");
 
@@ -131,7 +148,7 @@ namespace smirkly::auth::infra::db::pg {
         }
     }
 
-    domain::models::User PostgresUserRepository::Insert(const services::ports::NewUserData &data) {
+    domain::models::User PostgresUserRepository::Insert(const ports::NewUserData &data) {
         auto tx = PgTransaction::Begin(
             pg_cluster_,
             "PostgresUserRepository::Insert.AutoTx"
@@ -145,7 +162,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
 
-    void PostgresUserRepository::SetEmailVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+    void PostgresUserRepository::SetEmailVerified(ports::DbTransaction &tx, std::string_view user_id,
                                                   bool verified) {
         auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::SetEmailVerified");
 
@@ -168,7 +185,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
 
-    void PostgresUserRepository::SetPhoneVerified(services::ports::DbTransaction &tx, std::string_view user_id,
+    void PostgresUserRepository::SetPhoneVerified(ports::DbTransaction &tx, std::string_view user_id,
                                                   bool verified) {
         auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::SetPhoneVerified");
 
@@ -191,7 +208,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
 
-    void PostgresUserRepository::SoftDelete(services::ports::DbTransaction &tx, std::string_view user_id) {
+    void PostgresUserRepository::SoftDelete(ports::DbTransaction &tx, std::string_view user_id) {
         auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::SoftDelete");
 
         pg_tx.Native().Execute(
@@ -212,7 +229,7 @@ namespace smirkly::auth::infra::db::pg {
     }
 
 
-    void PostgresUserRepository::UpdatePasswordHash(services::ports::DbTransaction &tx, std::string_view user_id,
+    void PostgresUserRepository::UpdatePasswordHash(ports::DbTransaction &tx, std::string_view user_id,
                                                     std::string_view new_password_hash) {
         auto &pg_tx = AsPgTx(tx, "PostgresUserRepository::UpdatePasswordHash");
 

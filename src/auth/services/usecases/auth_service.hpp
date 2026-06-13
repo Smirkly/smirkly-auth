@@ -20,6 +20,9 @@
 #include <auth/services/ports/support/id_generator.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
+#include <auth/services/policies/email_verification_policy.hpp>
+#include <auth/services/policies/session_policy.hpp>
+#include <auth/services/policies/sign_in_policy.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
@@ -35,7 +38,10 @@ namespace smirkly::auth::services::usecases {
             ports::security::JwtTokenProvider &token_provider,
             ports::DeviceRepository &device_repo,
             ports::SessionRepository &session_repo,
-            ports::support::IdGenerator &id_generator
+            ports::support::IdGenerator &id_generator,
+            policies::SessionPolicy session_policy,
+            policies::SignInPolicy sign_in_policy = {},
+            policies::EmailVerificationPolicy email_verification_policy = {}
             /* dependences */);
 
         contracts::SignUpResult SignUp(
@@ -87,6 +93,9 @@ namespace smirkly::auth::services::usecases {
         ports::PasswordHasher &password_hasher_;
         ports::VerificationCodeGenerator &code_generator_;
         ports::support::IdGenerator &id_generator_;
+        policies::EmailVerificationPolicy email_verification_policy_;
+        policies::SessionPolicy session_policy_;
+        policies::SignInPolicy sign_in_policy_;
         validation::SignUpValidator sign_up_validator_;
     };
 }

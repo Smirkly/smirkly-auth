@@ -1,6 +1,7 @@
 #include <auth/services/usecases/auth_service.hpp>
 
 #include <chrono>
+#include <stdexcept>
 
 #include <auth/services/errors/access_token_errors.hpp>
 #include <auth/services/errors/change_password_errors.hpp>
@@ -16,6 +17,21 @@
 #include <auth/services/validation/sign_up_validator.hpp>
 
 namespace smirkly::auth::services::usecases {
+    namespace {
+        bool LimitExceeded(std::size_t count, std::size_t limit) {
+            return limit > 0 && count >= limit;
+        }
+
+        bool ShouldUpdateLastUsed(
+            const domain::models::Session &session,
+            std::chrono::system_clock::time_point now,
+            std::chrono::seconds threshold
+        ) {
+            return !session.last_used_at ||
+                   *session.last_used_at + threshold <= now;
+        }
+    }
+
     AuthService::AuthService(
         ports::TransactionManager &transaction_manager,
         ports::UserRepository &user_repo,
@@ -26,19 +42,31 @@ namespace smirkly::auth::services::usecases {
         ports::security::JwtTokenProvider &token_provider,
         ports::DeviceRepository &device_repo,
         ports::SessionRepository &session_repo,
-        ports::support::IdGenerator &id_generator
+        ports::support::IdGenerator &id_generator,
+        policies::SessionPolicy session_policy,
+        policies::SignInPolicy sign_in_policy,
+        policies::EmailVerificationPolicy email_verification_policy
         /* dependences */
     )
         : user_repo_(user_repo),
-          password_hasher_(password_hasher),
-          code_generator_(code_generator),
           email_outbox_repo_(email_outbox_repo),
           email_verification_repo_(email_verification_repo),
-          transaction_manager_(transaction_manager),
-          token_provider_(token_provider),
           device_repo(device_repo),
           session_repo(session_repo),
-          id_generator_(id_generator) {
+          transaction_manager_(transaction_manager),
+          token_provider_(token_provider),
+          password_hasher_(password_hasher),
+          code_generator_(code_generator),
+          id_generator_(id_generator),
+          email_verification_policy_(email_verification_policy),
+          session_policy_(session_policy),
+          sign_in_policy_(sign_in_policy) {
+        if (session_policy_.refresh_token_ttl <= std::chrono::seconds{0}) {
+            throw std::runtime_error("session refresh token TTL must be positive");
+        }
+        if (session_policy_.activity_update_threshold < std::chrono::seconds{0}) {
+            throw std::runtime_error("session activity update threshold must not be negative");
+        }
     }
 
 
@@ -116,20 +144,48 @@ namespace smirkly::auth::services::usecases {
     void AuthService::VerifyEmail(
         const contracts::VerifyEmailCommand &cmd,
         const contracts::RequestMeta &meta) {
-        const auto user_opt = user_repo_.FindByEmail(cmd.email);
+        const auto now = std::chrono::system_clock::now();
+        const auto user_opt = user_repo_.FindByEmail(cmd.email, ports::ReadConsistency::kStrong);
+
+        if (user_opt && user_opt->is_email_verified) {
+            throw errors::AlreadyVerified("User already verified");
+        }
+
+        std::optional<std::string> user_id;
+        if (user_opt) {
+            user_id = user_opt->id;
+        }
+
+        const auto since = now - email_verification_policy_.rate_limit_window;
+        const auto counters = email_verification_repo_.CountRecentAttempts(
+            cmd.email,
+            user_id,
+            meta.ip,
+            since
+        );
+
+        if (LimitExceeded(counters.email, email_verification_policy_.max_attempts_per_email) ||
+            LimitExceeded(counters.user, email_verification_policy_.max_attempts_per_user) ||
+            LimitExceeded(counters.ip, email_verification_policy_.max_attempts_per_ip)) {
+            throw errors::TooManyVerificationAttempts("too many verification attempts");
+        }
+
+        {
+            auto tx = transaction_manager_.Begin("auth.verify_email.record_attempt");
+            email_verification_repo_.RecordAttempt(*tx, cmd.email, user_id, meta.ip, meta.user_agent, now);
+            tx->Commit();
+        }
 
         if (!user_opt) {
             throw errors::UserNotFound("User not found");
         }
 
         const auto &user = *user_opt;
-
-        if (user.is_email_verified) {
-            throw errors::AlreadyVerified("User already verified");
-        }
-
-        const auto now = std::chrono::system_clock::now();
-        const auto verification_opt = email_verification_repo_.FindActiveByUserId(user.id, now);
+        const auto verification_opt = email_verification_repo_.FindActiveByUserId(
+            user.id,
+            now,
+            email_verification_policy_.max_code_attempts
+        );
 
         if (!verification_opt) {
             throw errors::CodeExpired("Verification code expired or not found");
@@ -140,7 +196,12 @@ namespace smirkly::auth::services::usecases {
 
         if (!code_ok) {
             auto tx = transaction_manager_.Begin("auth.verify_email.invalid_code");
-            email_verification_repo_.IncrementAttempts(*tx, verification.id, now);
+            email_verification_repo_.IncrementAttempts(
+                *tx,
+                verification.id,
+                now,
+                email_verification_policy_.max_code_attempts
+            );
             tx->Commit();
 
             throw errors::InvalidCode("Invalid verification code");
@@ -167,11 +228,11 @@ namespace smirkly::auth::services::usecases {
 
         std::optional<domain::models::User> user_opt;
         if (cmd.username) {
-            user_opt = user_repo_.FindByUsername(*cmd.username);
+            user_opt = user_repo_.FindByUsername(*cmd.username, ports::ReadConsistency::kStrong);
         } else if (cmd.email) {
-            user_opt = user_repo_.FindByEmail(*cmd.email);
+            user_opt = user_repo_.FindByEmail(*cmd.email, ports::ReadConsistency::kStrong);
         } else if (cmd.phone) {
-            user_opt = user_repo_.FindByPhone(*cmd.phone);
+            user_opt = user_repo_.FindByPhone(*cmd.phone, ports::ReadConsistency::kStrong);
         }
 
         if (!user_opt) {
@@ -182,6 +243,12 @@ namespace smirkly::auth::services::usecases {
         const bool password_ok = password_hasher_.Verify(cmd.password, user.password);
         if (!password_ok) {
             throw errors::InvalidCredentials("invalid credentials");
+        }
+
+        if (sign_in_policy_.require_verified_email &&
+            user.email.has_value() &&
+            !user.is_email_verified) {
+            throw errors::EmailNotVerified("email is not verified");
         }
 
         const std::string session_id = id_generator_.Generate();
@@ -201,7 +268,8 @@ namespace smirkly::auth::services::usecases {
             device.id,
             std::move(refresh_token_hash),
             token_family_id,
-            meta
+            meta,
+            session_policy_.refresh_token_ttl
         );
 
         domain::models::Session session = session_repo.Insert(*tx, new_session_data);
@@ -210,7 +278,8 @@ namespace smirkly::auth::services::usecases {
         contracts::SignInResult result = {
             .user = user,
             .tokens = std::move(tokens),
-            .session_id = session.id
+            .session_id = session.id,
+            .refresh_token_max_age = session_policy_.refresh_token_ttl
         };
 
         return result;
@@ -226,7 +295,7 @@ namespace smirkly::auth::services::usecases {
 
         const auto claims = token_provider_.ParseRefreshToken(cmd.refresh_token);
 
-        const auto session_opt = session_repo.FindById(claims.session_id);
+        const auto session_opt = session_repo.FindById(claims.session_id, ports::ReadConsistency::kStrong);
         if (!session_opt) {
             throw errors::RefreshSessionNotFound("session not found");
         }
@@ -284,7 +353,8 @@ namespace smirkly::auth::services::usecases {
             new_session_id,
             session,
             std::move(new_refresh_token_hash),
-            meta
+            meta,
+            session_policy_.refresh_token_ttl
         );
 
         auto tx = transaction_manager_.Begin("auth.refresh");
@@ -302,7 +372,8 @@ namespace smirkly::auth::services::usecases {
         contracts::RefreshResult result = {
             .access_token = std::move(tokens.access_token),
             .refresh_token = std::move(tokens.refresh_token),
-            .session_id = replacement_session.id
+            .session_id = replacement_session.id,
+            .refresh_token_max_age = session_policy_.refresh_token_ttl
         };
 
         return result;
@@ -314,7 +385,7 @@ namespace smirkly::auth::services::usecases {
         }
 
         const auto claims = token_provider_.ParseAccessToken(access_token);
-        const auto session_opt = session_repo.FindById(claims.session_id);
+        const auto session_opt = session_repo.FindById(claims.session_id, ports::ReadConsistency::kStrong);
         if (!session_opt) {
             throw errors::AuthSessionNotFound("session not found");
         }
@@ -326,13 +397,23 @@ namespace smirkly::auth::services::usecases {
         if (session.revoked_at) {
             throw errors::AuthSessionRevoked("session revoked");
         }
-        if (session.expires_at <= std::chrono::system_clock::now()) {
+        const auto now = std::chrono::system_clock::now();
+        if (session.expires_at <= now) {
             throw errors::AuthSessionExpired("session expired");
         }
 
-        const auto user_opt = user_repo_.FindById(claims.user_id);
+        const auto user_opt = user_repo_.FindById(claims.user_id, ports::ReadConsistency::kStrong);
         if (!user_opt) {
             throw errors::AuthUserNotFound("user not found");
+        }
+
+        if (ShouldUpdateLastUsed(
+                session,
+                now,
+                session_policy_.activity_update_threshold)) {
+            auto tx = transaction_manager_.Begin("auth.session_activity");
+            session_repo.UpdateLastUsed(*tx, session.id, now);
+            tx->Commit();
         }
 
         return {
@@ -342,7 +423,7 @@ namespace smirkly::auth::services::usecases {
     }
 
     contracts::MeResult AuthService::GetMe(const contracts::AuthContext &context) {
-        const auto user_opt = user_repo_.FindById(context.user_id);
+        const auto user_opt = user_repo_.FindById(context.user_id, ports::ReadConsistency::kStrong);
         if (!user_opt) {
             throw errors::AuthUserNotFound("user not found");
         }
@@ -355,7 +436,7 @@ namespace smirkly::auth::services::usecases {
 
     contracts::SessionsResult AuthService::ListSessions(const contracts::AuthContext &context) {
         return {
-            .sessions = session_repo.ListActiveByUserId(context.user_id),
+            .sessions = session_repo.ListActiveByUserId(context.user_id, ports::ReadConsistency::kStrong),
         };
     }
 
@@ -363,7 +444,7 @@ namespace smirkly::auth::services::usecases {
         const contracts::AuthContext &context,
         std::string_view session_id
     ) {
-        const auto target_session = session_repo.FindById(session_id);
+        const auto target_session = session_repo.FindById(session_id, ports::ReadConsistency::kStrong);
         if (!target_session) {
             throw errors::SessionNotFound("session not found");
         }
@@ -403,7 +484,7 @@ namespace smirkly::auth::services::usecases {
             throw errors::ChangePasswordValidation(e.what());
         }
 
-        const auto user_opt = user_repo_.FindById(context.user_id);
+        const auto user_opt = user_repo_.FindById(context.user_id, ports::ReadConsistency::kStrong);
         if (!user_opt) {
             throw errors::AuthUserNotFound("user not found");
         }

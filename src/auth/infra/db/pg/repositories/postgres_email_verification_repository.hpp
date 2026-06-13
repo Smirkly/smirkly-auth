@@ -13,26 +13,44 @@ USERVER_NAMESPACE_BEGIN
 USERVER_NAMESPACE_END
 
 namespace smirkly::auth::infra::db::pg {
-    class PostgresEmailVerificationRepository : public services::ports::EmailVerificationRepository {
+    namespace ports = services::ports;
+
+    class PostgresEmailVerificationRepository : public ports::EmailVerificationRepository {
     public:
         explicit PostgresEmailVerificationRepository(USERVER_NAMESPACE::storages::postgres::ClusterPtr pg_cluster);
 
-        services::ports::EmailVerification Insert(
-            services::ports::DbTransaction &tx,
-            const services::ports::NewEmailVerificationData &data) override;
+        ports::EmailVerification Insert(
+            ports::DbTransaction &tx,
+            const ports::NewEmailVerificationData &data) override;
 
-        std::optional<services::ports::EmailVerification> FindActiveByUserId(
+        std::optional<ports::EmailVerification> FindActiveByUserId(
             std::string_view user_id,
-            std::chrono::system_clock::time_point now) override;
+            std::chrono::system_clock::time_point now,
+            std::size_t max_attempts) override;
 
         void MarkUsed(
-            services::ports::DbTransaction &tx,
+            ports::DbTransaction &tx,
             std::string_view verification_id,
             std::chrono::system_clock::time_point) override;
 
         void IncrementAttempts(
-            services::ports::DbTransaction &tx,
+            ports::DbTransaction &tx,
             std::string_view verification_id,
+            std::chrono::system_clock::time_point now,
+            std::size_t max_attempts) override;
+
+        ports::EmailVerificationAttemptCounters CountRecentAttempts(
+            std::string_view email,
+            const std::optional<std::string> &user_id,
+            const std::optional<std::string> &ip,
+            std::chrono::system_clock::time_point since) override;
+
+        void RecordAttempt(
+            ports::DbTransaction &tx,
+            std::string_view email,
+            const std::optional<std::string> &user_id,
+            const std::optional<std::string> &ip,
+            const std::optional<std::string> &user_agent,
             std::chrono::system_clock::time_point now) override;
 
     private:
