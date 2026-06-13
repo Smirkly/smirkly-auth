@@ -8,18 +8,20 @@
 
 #include <auth/components/auth_infra_component.hpp>
 #include <auth/components/auth_security_component.hpp>
+#include <auth/config/auth_service_config.hpp>
 #include <auth/services/usecases/auth_service.hpp>
 
 namespace smirkly::auth::components {
-
 struct AuthServiceComponent::Impl {
+  config::AuthServiceSettings settings;
   AuthInfraComponent& infra;
   AuthSecurityComponent& security;
   services::usecases::AuthService auth_service;
 
   Impl(const userver::components::ComponentConfig& cfg,
        const userver::components::ComponentContext& ctx)
-      : infra(ctx.FindComponent<AuthInfraComponent>(
+      : settings(config::ParseAuthServiceSettings(cfg)),
+        infra(ctx.FindComponent<AuthInfraComponent>(
             cfg["infra-component"].As<std::string>(
                 std::string{AuthInfraComponent::kName}))),
         security(ctx.FindComponent<AuthSecurityComponent>(
@@ -32,7 +34,14 @@ struct AuthServiceComponent::Impl {
                      security.GetVerificationCodeGenerator(),
                      security.GetJwtTokenProvider(),
                      infra.GetDeviceRepository(), infra.GetSessionRepository(),
-                     security.GetIdGenerator()) {}
+                     security.GetIdGenerator(),
+                     services::policies::SessionPolicy{
+                         .refresh_token_ttl = security.GetRefreshTokenTtl(),
+                         .activity_update_threshold =
+                             settings.session.activity_update_threshold
+                     },
+                     settings.sign_in,
+                     settings.email_verification) {}
 };
 
 AuthServiceComponent::AuthServiceComponent(
@@ -60,6 +69,55 @@ properties:
     type: string
     description: Auth security component name
     default: auth-security
+  sign-in:
+    type: object
+    description: Sign-in policy
+    additionalProperties: false
+    properties:
+      require-verified-email:
+        type: boolean
+        description: Reject password sign-in for accounts with an unverified email address
+        default: false
+  session-activity:
+    type: object
+    description: Authenticated session activity tracking
+    additionalProperties: false
+    properties:
+      update-threshold-seconds:
+        type: integer
+        description: Minimum interval between last_used_at writes for one active session
+        minimum: 0
+        default: 300
+  email-verification:
+    type: object
+    description: Email verification limits
+    additionalProperties: false
+    properties:
+      max-code-attempts:
+        type: integer
+        description: Maximum invalid attempts for one active verification code
+        minimum: 1
+        default: 5
+      rate-limit-window-seconds:
+        type: integer
+        description: Rolling window for email verification attempt limits
+        minimum: 1
+        default: 900
+      max-attempts-per-email:
+        type: integer
+        description: Maximum verification attempts per email in the rolling window; 0 disables this limit
+        minimum: 0
+        default: 5
+      max-attempts-per-user:
+        type: integer
+        description: Maximum verification attempts per user in the rolling window; 0 disables this limit
+        minimum: 0
+        default: 5
+      max-attempts-per-ip:
+        type: integer
+        description: Maximum verification attempts per IP in the rolling window; 0 disables this limit
+        minimum: 0
+        default: 50
 )");
 }
 

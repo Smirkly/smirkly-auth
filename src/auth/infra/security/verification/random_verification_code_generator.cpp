@@ -1,30 +1,41 @@
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
 
-#include <random>
+#include <array>
+#include <stdexcept>
 #include <string_view>
+
+#include <openssl/rand.h>
 
 namespace smirkly::auth::infra::security {
     namespace {
-        std::mt19937_64 &GetRng() {
-            static thread_local std::mt19937_64 rng(std::random_device{}());
-            return rng;
-        }
-
         constexpr std::string_view kDigits = "0123456789";
+        constexpr unsigned char kMaxUniformDigitByte = 249;
+        constexpr std::size_t kRandomBufferSize = 32;
     }
 
     RandomVerificationCodeGenerator::RandomVerificationCodeGenerator(std::size_t length) : length_(length) {
     }
 
     std::string RandomVerificationCodeGenerator::Generate() {
-        auto &rng = GetRng();
-        std::uniform_int_distribution<std::size_t> distribution(0, kDigits.size() - 1);
-
         std::string code;
         code.reserve(length_);
 
-        for (std::size_t i{0}; i < length_; ++i) {
-            code.push_back(kDigits[distribution(rng)]);
+        while (code.size() < length_) {
+            std::array<unsigned char, kRandomBufferSize> buffer{};
+            if (RAND_bytes(buffer.data(), static_cast<int>(buffer.size())) != 1) {
+                throw std::runtime_error("RAND_bytes failed");
+            }
+
+            for (const auto byte: buffer) {
+                if (byte > kMaxUniformDigitByte) {
+                    continue;
+                }
+
+                code.push_back(kDigits[byte % kDigits.size()]);
+                if (code.size() == length_) {
+                    break;
+                }
+            }
         }
 
         return code;

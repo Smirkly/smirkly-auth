@@ -7,7 +7,9 @@
 #include <string_view>
 
 #include <auth/api/v0/dto/sign_up_request.hpp>
+#include <auth/components/auth_http_component.hpp>
 #include <auth/components/auth_service_component.hpp>
+#include <auth/infra/http/request_meta_extractor.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
 #include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/usecases/auth_service.hpp>
@@ -28,7 +30,10 @@ namespace smirkly::auth::api::v0::handlers {
     SignUpHandler::SignUpHandler(const userver::components::ComponentConfig &config,
                                  const userver::components::ComponentContext &context) : HttpHandlerJsonBase(
             config, context),
-        auth_service_(context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetAuthService()) {
+        auth_service_(context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetAuthService()),
+        request_meta_extractor_(
+            context.FindComponent<smirkly::auth::components::AuthHttpComponent>().GetRequestMetaExtractor()
+        ) {
     }
 
     SignUpHandler::Value SignUpHandler::HandleRequestJsonThrow(
@@ -38,14 +43,7 @@ namespace smirkly::auth::api::v0::handlers {
     ) const {
         const auto sign_up_dto = api::v0::dto::SignUpRequest::FromJson(body);
         auto sign_up_cmd = infra::mapping::ToDomain(sign_up_dto);
-
-        const auto &user_agent_header = request.GetHeader("User-Agent");
-        services::contracts::RequestMeta meta = {
-            .ip = request.GetRemoteAddress().PrimaryAddressString(),
-            .user_agent = user_agent_header.empty()
-                              ? std::nullopt
-                              : std::make_optional<std::string>(user_agent_header)
-        };
+        const auto meta = request_meta_extractor_.Extract(request);
 
         try {
             auto result = auth_service_.SignUp(sign_up_cmd, meta);

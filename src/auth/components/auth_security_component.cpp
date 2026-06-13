@@ -124,4 +124,9 @@ const std::string& AuthSecurityComponent::GetPublicJwksJson() const noexcept {
   return impl_->token_provider.GetPublicJwksJson();
 }
 
+std::chrono::seconds AuthSecurityComponent::GetRefreshTokenTtl()
+    const noexcept {
+  return impl_->settings.jwt.refresh_ttl;
+}
+
 }  // namespace smirkly::auth::components

@@ -16,14 +16,16 @@ namespace smirkly::auth::services::factories {
             std::string device_id,
             std::string refresh_token_hash,
             std::string token_family_id,
-            const contracts::RequestMeta &meta
+            const contracts::RequestMeta &meta,
+            std::chrono::seconds refresh_token_ttl
         );
 
         [[nodiscard]] static ports::NewSessionData CreateForRefreshRotation(
             std::string session_id,
             const domain::models::Session &previous_session,
             std::string refresh_token_hash,
-            const contracts::RequestMeta &meta
+            const contracts::RequestMeta &meta,
+            std::chrono::seconds refresh_token_ttl
         );
     };
 }

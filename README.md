@@ -181,9 +181,10 @@ The devcontainer compose overlay defaults to `linux/amd64` because the current u
 Apple Silicon build. This does not affect production compose. Override it with `SMIRKLY_DOCKER_PLATFORM` if needed.
 
 Docker-specific runtime values live in `configs/config_vars.docker.yaml`; for real production, provide your own file with
-production DB, JWT, and SMTP values and mount it to `/app/configs/config_vars.yaml`. If you override the Postgres
-credentials through `.env`, keep both `MIGRATE_DATABASE_URL` and the `postgres-dbconnection` value in
-`configs/config_vars.docker.yaml` in sync.
+production DB, JWT, and SMTP values and mount it to `/app/configs/config_vars.yaml`. The production image starts with
+`configs/static_config.prod.yaml`, which intentionally does not load userver testsuite endpoints. Local development and
+tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep both
+`MIGRATE_DATABASE_URL` and the `postgres-dbconnection` value in `configs/config_vars.docker.yaml` in sync.
 
 If your local `pgdata` volume was created before the migration runner was added, it may already contain tables but not
 the `schema_migrations` version table. For local development, recreate that database volume before the first

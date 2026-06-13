@@ -5,8 +5,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadUserver)
 include(DownloadLibcurl)
 
-set(USERVER_PYTHON "/opt/homebrew/bin/python3.12"
-        CACHE FILEPATH "Python for userver venvs")
+if (EXISTS "/opt/homebrew/bin/python3.12")
+    set(USERVER_PYTHON "/opt/homebrew/bin/python3.12"
+            CACHE FILEPATH "Python for userver venvs")
+    set(USERVER_PYTHON_PATH "/opt/homebrew/bin/python3.12"
+            CACHE FILEPATH "Python executable for userver venvs")
+endif ()
 
 set(USERVER_FEATURE_POSTGRESQL ON)
 set(USERVER_FEATURE_PATCH_LIBPQ OFF)
@@ -45,12 +49,16 @@ userver_add_sql_library(
         SQL_FILES
         read/devices/*.sql
         read/email_outbox/*.sql
-        read/email_verifications/*.sql
+        read/email_verifications/email_verification_attempts_count_recent.sql
+        read/email_verifications/email_verifications_find_active_by_user_id.sql
         read/sessions/*.sql
         read/users/*.sql
         write/devices/*.sql
         write/email_outbox/*.sql
-        write/email_verifications/*.sql
+        write/email_verifications/email_verification_attempts_insert.sql
+        write/email_verifications/email_verifications_increment_attempts.sql
+        write/email_verifications/email_verifications_insert.sql
+        write/email_verifications/email_verifications_mark_used.sql
         write/sessions/*.sql
         write/users/*.sql
 )
@@ -119,13 +127,21 @@ if (PROJECT_BENCH_SOURCES)
 endif ()
 
 # Functional testing
-option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" OFF)
+option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" ON)
 
 if (SMIRKLY_AUTH_ENABLE_TESTSUITE)
-    userver_testsuite_add_simple(
+    set(SMIRKLY_AUTH_TESTSUITE_ARGS
             SERVICE_TARGET ${PROJECT_NAME}
-            SQL_LIBRARY ${PROJECT_NAME}_sql
+            TEST_SUFFIX functional
+            WORKING_DIRECTORY tests/functional
     )
+    if (USERVER_PYTHON_PATH)
+        list(APPEND SMIRKLY_AUTH_TESTSUITE_ARGS
+                PYTHON_BINARY ${USERVER_PYTHON_PATH}
+        )
+    endif ()
+
+    userver_testsuite_add_simple(${SMIRKLY_AUTH_TESTSUITE_ARGS})
 endif ()
 
 

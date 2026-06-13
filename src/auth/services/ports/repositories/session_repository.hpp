@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <auth/domain/models/session.hpp>
+#include <auth/services/ports/repositories/read_consistency.hpp>
 #include <auth/services/ports/uow/db_transaction.hpp>
 
 namespace smirkly::auth::services::ports {
@@ -31,9 +32,15 @@ namespace smirkly::auth::services::ports {
             const NewSessionData &data
         ) = 0;
 
-        virtual std::optional<domain::models::Session> FindById(std::string_view session_id) = 0;
+        virtual std::optional<domain::models::Session> FindById(
+            std::string_view session_id,
+            ReadConsistency consistency = ReadConsistency::kEventual
+        ) = 0;
 
-        virtual std::vector<domain::models::Session> ListActiveByUserId(std::string_view user_id) = 0;
+        virtual std::vector<domain::models::Session> ListActiveByUserId(
+            std::string_view user_id,
+            ReadConsistency consistency = ReadConsistency::kEventual
+        ) = 0;
 
         virtual void Revoke(DbTransaction &tx, std::string_view session_id) = 0;
 

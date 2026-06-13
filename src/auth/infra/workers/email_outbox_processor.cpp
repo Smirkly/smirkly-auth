@@ -37,7 +37,6 @@ namespace smirkly::auth::infra::workers {
         settings.task_processor = &task_processor_;
         task_.Start("email-outbox-processor", settings, [this] { Tick(); });
 
-
         started_ = true;
         LOG_INFO() << "EmailOutboxProcessor started";
     }

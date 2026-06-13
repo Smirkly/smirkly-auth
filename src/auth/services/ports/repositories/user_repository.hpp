@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include <auth/domain/models/user.hpp>
+#include <auth/services/ports/repositories/read_consistency.hpp>
 #include <auth/services/ports/uow/db_transaction.hpp>
 
 namespace smirkly::auth::services::ports {
@@ -25,13 +26,25 @@ namespace smirkly::auth::services::ports {
 
         [[nodiscard]] virtual bool ExistsByPhone(std::string_view phone) = 0;
 
-        [[nodiscard]] virtual std::optional<domain::models::User> FindById(std::string_view id) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindById(
+            std::string_view id,
+            ReadConsistency consistency = ReadConsistency::kEventual
+        ) = 0;
 
-        [[nodiscard]] virtual std::optional<domain::models::User> FindByUsername(std::string_view username) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindByUsername(
+            std::string_view username,
+            ReadConsistency consistency = ReadConsistency::kEventual
+        ) = 0;
 
-        [[nodiscard]] virtual std::optional<domain::models::User> FindByEmail(std::string_view email) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindByEmail(
+            std::string_view email,
+            ReadConsistency consistency = ReadConsistency::kEventual
+        ) = 0;
 
-        [[nodiscard]] virtual std::optional<domain::models::User> FindByPhone(std::string_view phone) = 0;
+        [[nodiscard]] virtual std::optional<domain::models::User> FindByPhone(
+            std::string_view phone,
+            ReadConsistency consistency = ReadConsistency::kEventual
+        ) = 0;
 
 
         [[nodiscard]] virtual domain::models::User Insert(DbTransaction &tx, const NewUserData &data) = 0;
