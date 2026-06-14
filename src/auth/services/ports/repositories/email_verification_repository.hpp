@@ -48,8 +48,13 @@ namespace smirkly::auth::services::ports {
 
         virtual void MarkUsed(
             DbTransaction &tx,
+            std::string_view verification_id,
+            std::chrono::system_clock::time_point used_at) = 0;
+
+        virtual void MarkActiveUsedByUserId(
+            DbTransaction &tx,
             std::string_view user_id,
-            std::chrono::system_clock::time_point) = 0;
+            std::chrono::system_clock::time_point used_at) = 0;
 
         virtual void IncrementAttempts(
             DbTransaction &tx,

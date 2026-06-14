@@ -17,6 +17,10 @@
         <nav class="nav" aria-label="Documentation">
           <a href="index.html">Overview</a>
           <a href="getting-started.html">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html">Deployment</a>
+          <a href="security.html">Security</a>
+          <a href="runbooks.html">Runbooks</a>
           <a href="api.html">API Reference</a>
           <a href="architecture.html" aria-current="page">Architecture</a>
           <a href="operations.html">Operations</a>
@@ -94,9 +98,12 @@
 
           <h2>Email Verification</h2>
           <p>
-            Sign-up creates a verification record and writes a pending email job into the outbox in
-            the same transaction. The outbox worker claims jobs with row locking and sends them
-            through SMTP.
+            Sign-up stores only a hash of the verification code and writes a pending email job into
+            the outbox in the same transaction. The outbox worker runs on its own task processor,
+            claims jobs with row locking, sends them through SMTP, retries transient failures, and
+            clears sensitive sent payloads. Resend requests close any previous active verification
+            record for the user before creating and queueing a fresh code, so only the latest active
+            code can be accepted.
           </p>
 
           <h2>Data Ownership</h2>

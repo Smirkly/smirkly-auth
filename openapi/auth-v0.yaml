@@ -78,6 +78,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /auth/v0/verify-email/resend:
+    post:
+      tags: [Auth]
+      operationId: resendEmailVerification
+      summary: Send a fresh email verification code
+      description: Always returns the same empty response when accepted. If an unverified account exists for the email, a new verification code is queued for delivery.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendEmailVerificationRequest'
+      responses:
+        '204':
+          description: Resend request accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Too many verification attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /auth/v0/sign-in:
     post:
       tags: [Auth]
@@ -411,6 +435,16 @@ components:
         code:
           type: string
           pattern: '^[0-9]{6}$'
+
+    ResendEmailVerificationRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
 
     ChangePasswordRequest:
       type: object

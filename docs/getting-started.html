@@ -17,6 +17,10 @@
         <nav class="nav" aria-label="Documentation">
           <a href="index.html">Overview</a>
           <a href="getting-started.html" aria-current="page">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html">Deployment</a>
+          <a href="security.html">Security</a>
+          <a href="runbooks.html">Runbooks</a>
           <a href="api.html">API Reference</a>
           <a href="architecture.html">Architecture</a>
           <a href="operations.html">Operations</a>
@@ -49,7 +53,9 @@ MIGRATE_DATABASE_URL=postgres://smirkly_auth:smirkly_auth@smirkly-postgres:5432/
           <p>Create <code>configs/config_vars.yaml</code>. Keep this file untracked because it may contain secrets.</p>
           <pre><code>worker-threads: 4
 worker-fs-threads: 2
+worker-email-outbox-threads: 2
 logger-level: info
+is-testing: false
 server-port: 8080
 postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
 
@@ -65,6 +71,23 @@ AUTH_SMTP_USERNAME: local-dev-user
 AUTH_SMTP_APP_PASSWORD: local-dev-password
 AUTH_SMTP_FROM_EMAIL: no-reply@localhost
 AUTH_SMTP_FROM_NAME: Smirkly</code></pre>
+          <p>
+            For Gmail-based local testing, use an app password, port <code>465</code>, and
+            <code>AUTH_SMTP_TLS_MODE: tls</code>. Port <code>587</code> should use
+            <code>starttls</code> only when the provider sends a plain SMTP greeting and then
+            upgrades the connection.
+          </p>
+          <pre><code>AUTH_SMTP_HOST: smtp.gmail.com
+AUTH_SMTP_PORT: 465
+AUTH_SMTP_TLS_MODE: tls
+AUTH_SMTP_USERNAME: your-account@gmail.com
+AUTH_SMTP_APP_PASSWORD: "&lt;gmail-app-password&gt;"
+AUTH_SMTP_FROM_EMAIL: your-account@gmail.com
+AUTH_SMTP_FROM_NAME: "Smirkly"</code></pre>
+          <p>
+            Restart the running service after changing <code>AUTH_SMTP_*</code>. Rebuild only when
+            source code changed.
+          </p>
 
           <h2>JWT Keys</h2>
           <pre><code>mkdir -p configs/secrets
@@ -113,6 +136,20 @@ ctest --test-dir cmake-build-debug --output-on-failure</code></pre>
           <h2>Run the Service</h2>
           <pre><code>./cmake-build-debug/smirkly-auth \
   --config ./configs/static_config.yaml</code></pre>
+
+          <h2>Email Verification</h2>
+          <p>Request a fresh verification code when the previous one expired or was not delivered:</p>
+          <pre><code>curl -i -X POST http://localhost:8080/auth/v0/verify-email/resend \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com"}'</code></pre>
+          <p>Submit the latest code from the email body:</p>
+          <pre><code>curl -i -X POST http://localhost:8080/auth/v0/verify-email \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com","code":"123456"}'</code></pre>
+          <p>Inspect local outbox state:</p>
+          <pre><code>docker compose exec -T smirkly-postgres \
+  psql -U smirkly_auth -d smirkly_auth \
+  -c "SELECT id, to_email, status, attempts, next_attempt_at, locked_until, left(coalesce(last_error, ''), 300) AS last_error, created_at, updated_at FROM email_outbox ORDER BY created_at DESC LIMIT 10;"</code></pre>
 
           <div class="callout">
             Do not commit real SMTP credentials, JWT private keys, database passwords, or production

@@ -17,6 +17,10 @@
         <nav class="nav" aria-label="Documentation">
           <a href="index.html" aria-current="page">Overview</a>
           <a href="getting-started.html">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html">Deployment</a>
+          <a href="security.html">Security</a>
+          <a href="runbooks.html">Runbooks</a>
           <a href="api.html">API Reference</a>
           <a href="architecture.html">Architecture</a>
           <a href="operations.html">Operations</a>
@@ -41,6 +45,25 @@
         </section>
 
         <div class="content">
+          <h2>Production Docs Map</h2>
+          <div class="grid">
+            <article class="card">
+              <h3>Configure</h3>
+              <p class="muted">Runtime files, SMTP settings, JWT keys, proxy trust, and secret rules.</p>
+              <p><a href="configuration.html">Open Configuration</a></p>
+            </article>
+            <article class="card">
+              <h3>Deploy</h3>
+              <p class="muted">Build gates, migrations, prod static config, rollout order, and rollback guidance.</p>
+              <p><a href="deployment.html">Open Deployment</a></p>
+            </article>
+            <article class="card">
+              <h3>Operate</h3>
+              <p class="muted">SMTP delivery checks, resend commands, local resets, and incident first checks.</p>
+              <p><a href="runbooks.html">Open Runbooks</a></p>
+            </article>
+          </div>
+
           <h2>Service Surface</h2>
           <div class="grid">
             <article class="card">
@@ -81,6 +104,16 @@
                   <td><code>POST</code></td>
                   <td><code>/auth/v0/sign-up</code></td>
                   <td>Create a new user and enqueue email verification when email is present.</td>
+                </tr>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/verify-email</code></td>
+                  <td>Verify an email address with the latest active code.</td>
+                </tr>
+                <tr>
+                  <td><code>POST</code></td>
+                  <td><code>/auth/v0/verify-email/resend</code></td>
+                  <td>Queue a fresh verification code for an unverified email address.</td>
                 </tr>
                 <tr>
                   <td><code>POST</code></td>

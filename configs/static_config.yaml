@@ -106,6 +106,7 @@ components_manager:
             fake-mode: true
 
         http-client:
+        http-client-middleware-pipeline:
         http-client-core:
             fs-task-processor: fs-task-processor
             user-agent: smirkly-auth
@@ -126,6 +127,11 @@ components_manager:
 
         handler-verify-email:
             path: /auth/v0/verify-email
+            method: POST
+            task_processor: main-task-processor
+
+        handler-resend-email-verification:
+            path: /auth/v0/verify-email/resend
             method: POST
             task_processor: main-task-processor
 
