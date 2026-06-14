@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Security | Smirkly Auth</title>
+    <meta name="description" content="Security model and production controls for smirkly-auth.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html">Overview</a>
+          <a href="getting-started.html">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html">Deployment</a>
+          <a href="security.html" aria-current="page">Security</a>
+          <a href="runbooks.html">Runbooks</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="operations.html">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="content">
+          <p class="eyebrow">Security</p>
+          <h1>Controls for secrets, token rotation, email verification, and trusted proxy boundaries.</h1>
+          <p class="lead">
+            Use this page to keep production deployments from exposing test surfaces, stale auth reads, leaked secrets, or untrusted client IP headers.
+          </p>
+
+          <h2>Production Exposure</h2>
+          <ul>
+            <li>Production must use <code>configs/static_config.prod.yaml</code>.</li>
+            <li>Testsuite and tests-control handlers must not be mounted in internet-facing environments.</li>
+            <li>Serve only behind TLS and a controlled reverse proxy.</li>
+            <li>Set request size limits and edge rate limits before traffic reaches the service.</li>
+          </ul>
+
+          <h2>Secrets</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Secret</th>
+                  <th>Storage</th>
+                  <th>Rotation trigger</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>JWT private key</td>
+                  <td>Secret store mounted as a file with restricted permissions.</td>
+                  <td>Scheduled rotation, suspected exposure, or signing key compromise.</td>
+                </tr>
+                <tr>
+                  <td>SMTP password</td>
+                  <td>Secret store or deployment-time generated config.</td>
+                  <td>Any exposure in chat, logs, screenshots, local files, or git history.</td>
+                </tr>
+                <tr>
+                  <td>Database password</td>
+                  <td>Secret store and database role manager.</td>
+                  <td>Staff offboarding, exposure, or periodic credential rotation.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Authentication Consistency</h2>
+          <p>
+            Credential checks, session lookup, revocation checks, password changes, refresh-token reuse detection, and
+            token-family revocation are auth-critical paths. They must read from strongly consistent storage, not from a
+            lagging replica. Replica lag can temporarily allow old passwords, revoked sessions, or missed reuse detection.
+          </p>
+
+          <h2>Session and Token Controls</h2>
+          <ul>
+            <li>Access tokens are short-lived RS256 JWTs.</li>
+            <li>Refresh tokens are delivered only through the <code>refresh_token</code> HttpOnly Secure cookie.</li>
+            <li>Refresh tokens are stored as hashes and rotated on each refresh.</li>
+            <li>Detected refresh-token reuse revokes the whole token family.</li>
+            <li>Password change revokes active sessions so clients must sign in again.</li>
+          </ul>
+
+          <h2>Email Verification Controls</h2>
+          <ul>
+            <li>Verification uses POST JSON bodies, not query-string secrets.</li>
+            <li>Verification codes are generated with a cryptographically secure generator and stored as hashes.</li>
+            <li>Attempts and resend requests are rate-limited by email, user, and client IP signals.</li>
+            <li>Outbox payloads containing sensitive code material are cleared after successful delivery.</li>
+            <li>Resend invalidates the previous active code before creating a fresh one.</li>
+          </ul>
+
+          <h2>Client IP Trust</h2>
+          <p>
+            <code>X-Forwarded-For</code> and <code>X-Real-IP</code> are untrusted user input unless the request came from a
+            configured trusted proxy CIDR. Store normalized IP values only after parsing and validation. This affects
+            session metadata and verification rate limits.
+          </p>
+
+          <h2>Logging Rules</h2>
+          <ul>
+            <li>Do not log passwords, refresh tokens, raw cookies, JWT private keys, SMTP credentials, or verification codes.</li>
+            <li>Use correlation ids for SMTP outbox jobs and auth errors.</li>
+            <li>Keep production log level at <code>info</code> unless debugging an active incident in a controlled window.</li>
+          </ul>
+
+          <h2>Known Security Backlog</h2>
+          <p>
+            Add dedicated application-level rate limiting backed by a shared store for sign-up, sign-in, password reset,
+            and verification endpoints. Edge limits are still required even after application limits exist.
+          </p>
+
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

@@ -75,6 +75,19 @@ namespace smirkly::auth::infra::db::pg {
         );
     }
 
+    void PostgresEmailVerificationRepository::MarkActiveUsedByUserId(
+        ports::DbTransaction &tx,
+        std::string_view user_id,
+        std::chrono::system_clock::time_point used_at) {
+        auto &pg_tx = AsPgTx(tx, "PostgresEmailVerificationRepository::MarkActiveUsedByUserId");
+
+        pg_tx.Native().Execute(
+            sql::kEmailVerificationsMarkActiveUsedByUserId,
+            user_id,
+            USERVER_NAMESPACE::storages::postgres::TimePointTz{used_at}
+        );
+    }
+
     void PostgresEmailVerificationRepository::IncrementAttempts(
         ports::DbTransaction &tx,
         std::string_view verification_id,

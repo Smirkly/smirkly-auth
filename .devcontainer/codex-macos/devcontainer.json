@@ -1,0 +1,52 @@
+{
+  "name": "smirkly-auth-codex-macos",
+  "dockerComposeFile": [
+    "../../docker-compose.yml",
+    "../../docker-compose.devcontainer.yml",
+    "../../docker-compose.devcontainer.codex-macos.yml"
+  ],
+  "service": "smirkly-auth-workspace",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "overrideCommand": false,
+  "remoteUser": "root",
+  "initializeCommand": "mkdir -p ${localEnv:HOME}/.codex",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.makefile-tools",
+        "vadimcn.vscode-lldb",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "clangd.arguments": [
+          "--background-index",
+          "--compile-commands-dir=build-debug",
+          "--clang-tidy",
+          "--completion-style=detailed",
+          "--header-insertion=never"
+        ],
+        "clangd.path": "/usr/bin/clangd",
+        "cmake.automaticReconfigure": false,
+        "cmake.configureOnEdit": false,
+        "cmake.configureOnOpen": false,
+        "cmake.buildDirectory": "${workspaceFolder}/build-debug"
+      }
+    }
+  },
+  "forwardPorts": [
+    8080,
+    5432
+  ],
+  "portsAttributes": {
+    "8080": {
+      "label": "smirkly-auth"
+    },
+    "5432": {
+      "label": "Postgres"
+    }
+  },
+  "postCreateCommand": "git config --global --add safe.directory /workspace && cmake --preset debug -DUSERVER_PYTHON=/usr/bin/python3"
+}

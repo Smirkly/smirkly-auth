@@ -466,6 +466,16 @@ class FakeEmailVerificationRepository final
       active->used_at = used_at;
     }
   }
+  void MarkActiveUsedByUserId(
+      ports::DbTransaction&,
+      std::string_view user_id,
+      std::chrono::system_clock::time_point used_at
+  ) override {
+    ++mark_active_used_by_user_id_count;
+    if (active && active->user_id == user_id) {
+      active->used_at = used_at;
+    }
+  }
   void IncrementAttempts(
       ports::DbTransaction&,
       std::string_view verification_id,
@@ -509,6 +519,7 @@ class FakeEmailVerificationRepository final
   std::size_t record_attempt_count{0};
   std::size_t increment_attempts_count{0};
   std::size_t mark_used_count{0};
+  std::size_t mark_active_used_by_user_id_count{0};
   std::string last_attempt_email;
   std::optional<std::string> last_attempt_user_id;
   std::optional<std::string> last_attempt_ip;

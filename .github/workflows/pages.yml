@@ -37,6 +37,54 @@ jobs:
           cp -R docs/. _site/
           cp openapi/auth-v0.yaml _site/openapi/auth-v0.yaml
 
+      - name: Validate site
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urlparse, unquote
+
+          root = Path('_site')
+          missing = []
+
+          class LinkParser(HTMLParser):
+              def __init__(self, source):
+                  super().__init__()
+                  self.source = source
+
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  for key in ('href', 'src'):
+                      value = attrs.get(key)
+                      if not value:
+                          continue
+                      parsed = urlparse(value)
+                      if parsed.scheme or parsed.netloc or value.startswith('#'):
+                          continue
+                      target = unquote(parsed.path)
+                      if not target:
+                          continue
+                      path = (self.source.parent / target).resolve()
+                      try:
+                          path.relative_to(root.resolve())
+                      except ValueError:
+                          missing.append((self.source, value, 'outside _site'))
+                          continue
+                      if not path.exists():
+                          missing.append((self.source, value, 'missing'))
+
+          for html_file in sorted(root.glob('*.html')):
+              parser = LinkParser(html_file)
+              parser.feed(html_file.read_text())
+
+          if missing:
+              for source, value, reason in missing:
+                  print(f'{source}: {value}: {reason}')
+              raise SystemExit(1)
+
+          print('site validation ok')
+          PY
+
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

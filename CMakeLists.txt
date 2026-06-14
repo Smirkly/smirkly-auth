@@ -58,6 +58,7 @@ userver_add_sql_library(
         write/email_verifications/email_verification_attempts_insert.sql
         write/email_verifications/email_verifications_increment_attempts.sql
         write/email_verifications/email_verifications_insert.sql
+        write/email_verifications/email_verifications_mark_active_used_by_user_id.sql
         write/email_verifications/email_verifications_mark_used.sql
         write/sessions/*.sql
         write/users/*.sql
@@ -135,7 +136,9 @@ if (SMIRKLY_AUTH_ENABLE_TESTSUITE)
             TEST_SUFFIX functional
             WORKING_DIRECTORY tests/functional
     )
-    if (USERVER_PYTHON_PATH)
+    if (USERVER_PYTHON_PATH
+            AND IS_ABSOLUTE "${USERVER_PYTHON_PATH}"
+            AND EXISTS "${USERVER_PYTHON_PATH}")
         list(APPEND SMIRKLY_AUTH_TESTSUITE_ARGS
                 PYTHON_BINARY ${USERVER_PYTHON_PATH}
         )

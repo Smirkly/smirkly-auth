@@ -17,6 +17,10 @@
         <nav class="nav" aria-label="Documentation">
           <a href="index.html">Overview</a>
           <a href="getting-started.html">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html">Deployment</a>
+          <a href="security.html">Security</a>
+          <a href="runbooks.html">Runbooks</a>
           <a href="api.html">API Reference</a>
           <a href="architecture.html">Architecture</a>
           <a href="operations.html" aria-current="page">Operations</a>
@@ -58,17 +62,75 @@
                   <td>Path to the RSA public key exposed through JWKS.</td>
                 </tr>
                 <tr>
-                  <td><code>AUTH_SMTP_*</code></td>
-                  <td>SMTP host, TLS mode, credentials, sender address, and sender name.</td>
+                  <td><code>worker-email-outbox-threads</code></td>
+                  <td>Dedicated task processor size for SMTP delivery work.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_HOST</code></td>
+                  <td>SMTP relay hostname, for example <code>smtp.gmail.com</code> for local Gmail testing.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_PORT</code></td>
+                  <td>SMTP relay port. Use <code>465</code> with implicit TLS or <code>587</code> with STARTTLS.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_TLS_MODE</code></td>
+                  <td><code>tls</code>, <code>starttls</code>, or <code>none</code>. Do not use <code>none</code> outside isolated local testing.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_USERNAME</code></td>
+                  <td>SMTP authentication user. For Gmail this is normally the mailbox address.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_APP_PASSWORD</code></td>
+                  <td>SMTP secret or app password. Store it only in the secret store and rotate it after exposure.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_FROM_EMAIL</code></td>
+                  <td>Envelope/from address authorized by the SMTP provider and domain policy.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_SMTP_FROM_NAME</code></td>
+                  <td>Human-readable sender name shown by mail clients.</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
+          <h2>SMTP and Email Verification</h2>
+          <p>
+            Production should use a controlled SMTP relay or transactional email provider rather than a personal
+            mailbox. Gmail app passwords are acceptable for local testing, but rotate them immediately if they are
+            pasted into chat, committed, logged, or included in screenshots.
+          </p>
+          <ul>
+            <li>Use <code>AUTH_SMTP_PORT: 465</code> with <code>AUTH_SMTP_TLS_MODE: tls</code> for implicit TLS providers.</li>
+            <li>Use <code>AUTH_SMTP_PORT: 587</code> with <code>AUTH_SMTP_TLS_MODE: starttls</code> only when the provider greets in plain SMTP and upgrades with STARTTLS.</li>
+            <li>Keep <code>AUTH_SMTP_FROM_EMAIL</code> aligned with provider authorization, SPF, DKIM, and DMARC policy.</li>
+            <li>Do not log verification codes, raw outbox payloads, SMTP passwords, refresh cookies, or JWT private keys.</li>
+            <li>After SMTP config changes, restart the service process or container. Rebuild only when code changed.</li>
+          </ul>
+          <p>Request a fresh verification code with the resend endpoint:</p>
+          <pre><code>curl -i -X POST https://auth.example.com/auth/v0/verify-email/resend \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com"}'</code></pre>
+          <p>Inspect outbox health in a local or restricted admin session:</p>
+          <pre><code>SELECT id, to_email, status, attempts, next_attempt_at, locked_until,
+       left(coalesce(last_error, ''), 300) AS last_error,
+       created_at, updated_at
+FROM email_outbox
+ORDER BY created_at DESC
+LIMIT 10;</code></pre>
+          <p>
+            Alert on sustained <code>pending</code> backlog, repeated retryable SMTP failures, and jobs that reach
+            dead-letter state. Treat a growing backlog as user-facing because new users cannot complete verification.
+          </p>
+
           <h2>Deployment Checklist</h2>
           <ul>
             <li>Serve the service only behind TLS.</li>
             <li>Keep JWT private keys, SMTP credentials, and database passwords in a secret store.</li>
+            <li>Mount or generate <code>configs/config_vars.yaml</code> at deploy time; do not bake real secrets into the image.</li>
             <li>Run the <code>smirkly-migrate</code> job before starting new auth service containers.</li>
             <li>Run production containers with <code>configs/static_config.prod.yaml</code>; keep testsuite handlers only in local and test configs.</li>
             <li>Set <code>CPU_LIMIT</code> in production deployments so congestion-control can enforce real limits.</li>
