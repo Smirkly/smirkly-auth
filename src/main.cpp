@@ -1,5 +1,6 @@
 #include <userver/clients/dns/component.hpp>
 #include <userver/clients/http/component.hpp>
+#include <userver/clients/http/middlewares/pipeline_component.hpp>
 #include <userver/components/component_list.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/congestion_control/component.hpp>
@@ -14,6 +15,7 @@
 #include <auth/api/v0/handlers/logout_handler.hpp>
 #include <auth/api/v0/handlers/me_handler.hpp>
 #include <auth/api/v0/handlers/refresh_token_handler.hpp>
+#include <auth/api/v0/handlers/resend_email_verification_handler.hpp>
 #include <auth/api/v0/handlers/session_revoke_handler.hpp>
 #include <auth/api/v0/handlers/sessions_revoke_all_handler.hpp>
 #include <auth/api/v0/handlers/sessions_handler.hpp>
@@ -32,6 +34,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::components::Postgres>("postgres-auth")
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::HttpClientCore>()
+          .Append<userver::clients::http::MiddlewarePipelineComponent>()
           .Append<userver::components::HttpClient>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<userver::server::handlers::TestsControl>()
@@ -43,6 +46,7 @@ int main(int argc, char* argv[]) {
           .Append<smirkly::auth::components::AuthServiceComponent>()
           .Append<smirkly::auth::api::v0::handlers::SignUpHandler>()
           .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>()
+          .Append<smirkly::auth::api::v0::handlers::ResendEmailVerificationHandler>()
           .Append<smirkly::auth::api::v0::handlers::SignInHandler>()
           .Append<smirkly::auth::api::v0::handlers::RefreshHandler>()
           .Append<smirkly::auth::api::v0::handlers::LogoutHandler>()

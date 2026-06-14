@@ -31,7 +31,12 @@ namespace smirkly::auth::infra::db::pg {
         void MarkUsed(
             ports::DbTransaction &tx,
             std::string_view verification_id,
-            std::chrono::system_clock::time_point) override;
+            std::chrono::system_clock::time_point used_at) override;
+
+        void MarkActiveUsedByUserId(
+            ports::DbTransaction &tx,
+            std::string_view user_id,
+            std::chrono::system_clock::time_point used_at) override;
 
         void IncrementAttempts(
             ports::DbTransaction &tx,

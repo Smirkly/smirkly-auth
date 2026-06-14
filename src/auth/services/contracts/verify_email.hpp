@@ -7,4 +7,8 @@ namespace smirkly::auth::services::contracts {
         std::string email;
         std::string code;
     };
+
+    struct ResendEmailVerificationCommand final {
+        std::string email;
+    };
 }

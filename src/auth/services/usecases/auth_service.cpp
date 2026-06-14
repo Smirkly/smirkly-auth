@@ -215,6 +215,63 @@ namespace smirkly::auth::services::usecases {
         tx->Commit();
     }
 
+    void AuthService::ResendEmailVerification(
+        const contracts::ResendEmailVerificationCommand &cmd,
+        const contracts::RequestMeta &meta) {
+        const auto now = std::chrono::system_clock::now();
+        const auto user_opt = user_repo_.FindByEmail(cmd.email, ports::ReadConsistency::kStrong);
+
+        std::optional<std::string> user_id;
+        if (user_opt) {
+            user_id = user_opt->id;
+        }
+
+        const auto since = now - email_verification_policy_.rate_limit_window;
+        const auto counters = email_verification_repo_.CountRecentAttempts(
+            cmd.email,
+            user_id,
+            meta.ip,
+            since
+        );
+
+        if (LimitExceeded(counters.email, email_verification_policy_.max_attempts_per_email) ||
+            LimitExceeded(counters.user, email_verification_policy_.max_attempts_per_user) ||
+            LimitExceeded(counters.ip, email_verification_policy_.max_attempts_per_ip)) {
+            throw errors::TooManyVerificationAttempts("too many verification attempts");
+        }
+
+        auto tx = transaction_manager_.Begin("auth.resend_email_verification");
+        email_verification_repo_.RecordAttempt(*tx, cmd.email, user_id, meta.ip, meta.user_agent, now);
+
+        if (user_opt && !user_opt->is_email_verified && user_opt->email) {
+            email_verification_repo_.MarkActiveUsedByUserId(*tx, user_opt->id, now);
+
+            const std::string raw_code = code_generator_.Generate();
+            const std::string code_hash = password_hasher_.Hash(raw_code);
+
+            auto verification_data = factories::EmailVerificationFactory::Create(
+                user_opt->id,
+                code_hash,
+                meta,
+                now,
+                std::chrono::minutes{15}
+            );
+
+            email_verification_repo_.Insert(*tx, verification_data);
+
+            auto job = factories::EmailOutboxFactory::VerificationEmail(
+                *user_opt->email,
+                raw_code,
+                user_opt->id,
+                "ru"
+            );
+
+            email_outbox_repo_.Insert(*tx, job);
+        }
+
+        tx->Commit();
+    }
+
     contracts::SignInResult AuthService::SignIn(
         const contracts::SignInCommand &cmd,
         const contracts::RequestMeta &meta) {

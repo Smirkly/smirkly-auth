@@ -113,6 +113,11 @@ components_manager:
             method: POST
             task_processor: main-task-processor
 
+        handler-resend-email-verification:
+            path: /auth/v0/verify-email/resend
+            method: POST
+            task_processor: main-task-processor
+
         handler-auth-sign-in:
             path: /auth/v0/sign-in
             method: POST

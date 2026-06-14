@@ -52,6 +52,10 @@ namespace smirkly::auth::services::usecases {
             const contracts::VerifyEmailCommand &cmd,
             const contracts::RequestMeta &meta = {});
 
+        void ResendEmailVerification(
+            const contracts::ResendEmailVerificationCommand &cmd,
+            const contracts::RequestMeta &meta = {});
+
         contracts::SignInResult SignIn(
             const contracts::SignInCommand &cmd,
             const contracts::RequestMeta &meta = {});
