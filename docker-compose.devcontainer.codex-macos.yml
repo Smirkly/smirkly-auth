@@ -1,0 +1,6 @@
+services:
+  smirkly-auth-workspace:
+    environment:
+      CODEX_HOME: /root/.codex
+    volumes:
+      - ${HOME}/.codex:/root/.codex

@@ -16,3 +16,11 @@ cmake --build build-debug --parallel --target smirkly-auth
 ```
 
 The workspace container stays alive with `sleep infinity`; start and stop the auth service from the terminal.
+
+Optional Codex profile for macOS users:
+
+- `.devcontainer/codex-macos/devcontainer.json` mounts the host `${HOME}/.codex`
+  into `/root/.codex` via `docker-compose.devcontainer.codex-macos.yml` so Codex
+  inside the container can reuse local auth, config, and sessions.
+- The default devcontainer intentionally does not mount personal Codex state.
+  Keep it that way for developers who do not use Codex and for non-macOS setups.
