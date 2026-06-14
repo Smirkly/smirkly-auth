@@ -63,6 +63,7 @@ Create configs/config_vars.yaml with basic runtime options, for example:
 ```yaml
 worker-threads: 4
 worker-fs-threads: 2
+worker-email-outbox-threads: 2
 logger-level: info
 
 is-testing: false
@@ -74,15 +75,43 @@ AUTH_JWT_AUDIENCE: smirkly-api
 AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
 AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
 AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
+
+AUTH_SMTP_HOST: smtp.localhost
+AUTH_SMTP_PORT: 587
+AUTH_SMTP_TLS_MODE: starttls
+AUTH_SMTP_USERNAME: local-dev-user
+AUTH_SMTP_APP_PASSWORD: local-dev-password
+AUTH_SMTP_FROM_EMAIL: no-reply@localhost
+AUTH_SMTP_FROM_NAME: Smirkly
 ```
 
-worker-threads / worker-fs-threads – userver task processors.
+worker-threads / worker-fs-threads - userver task processors.
 
-logger-level – log level (trace, debug, info, warning, error…).
+worker-email-outbox-threads - dedicated task processor threads for SMTP delivery. Keep SMTP work off the main request processor.
 
-server-port – HTTP port for the auth service.
+logger-level - log level (trace, debug, info, warning, error...).
 
-You may extend this file as the service evolves.
+server-port - HTTP port for the auth service.
+
+`AUTH_SMTP_*` controls outbound email verification delivery. `AUTH_SMTP_TLS_MODE` should match the provider port:
+
+- `tls` with port `465` for implicit TLS, which is what Gmail commonly works with from Docker/local networks.
+- `starttls` with port `587` when the provider sends a plain SMTP greeting and upgrades with STARTTLS.
+- `none` only for a local fake SMTP server in isolated development.
+
+For Gmail-based local testing, use a Google app password and placeholders like this:
+
+```yaml
+AUTH_SMTP_HOST: smtp.gmail.com
+AUTH_SMTP_PORT: 465
+AUTH_SMTP_TLS_MODE: tls
+AUTH_SMTP_USERNAME: your-account@gmail.com
+AUTH_SMTP_APP_PASSWORD: "<gmail-app-password>"
+AUTH_SMTP_FROM_EMAIL: your-account@gmail.com
+AUTH_SMTP_FROM_NAME: "Smirkly"
+```
+
+Do not commit real SMTP credentials. If an app password was pasted into chat, logs, screenshots, or git history, rotate it in Google Account settings and update your local secret source.
 
 Generate a local RSA key pair for JWT signing:
 
@@ -95,6 +124,36 @@ chmod 600 configs/secrets/auth_jwt_private.pem
 
 The auth service signs JWTs with the private key. Other services should fetch public keys from
 `/auth/v0/.well-known/jwks.json` and use them only to verify access tokens.
+
+### Email verification and SMTP
+
+Sign-up stores a hashed verification code and enqueues an email job in `email_outbox` in the same database transaction. The background outbox worker claims ready jobs, sends them through SMTP, retries transient failures, and eventually marks exhausted jobs as dead.
+
+If a code expires or the email was not delivered, request a fresh code:
+
+```bash
+curl -i -X POST http://localhost:8080/auth/v0/verify-email/resend \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com"}'
+```
+
+Then verify the latest code from the email body:
+
+```bash
+curl -i -X POST http://localhost:8080/auth/v0/verify-email \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com","code":"123456"}'
+```
+
+To inspect local delivery state:
+
+```bash
+docker compose exec -T smirkly-postgres \
+  psql -U smirkly_auth -d smirkly_auth \
+  -c "SELECT id, to_email, status, attempts, next_attempt_at, locked_until, left(coalesce(last_error, ''), 300) AS last_error, created_at, updated_at FROM email_outbox ORDER BY created_at DESC LIMIT 10;"
+```
+
+After changing `AUTH_SMTP_*` values, restart the service container or local process. A rebuild is needed only when source code changed.
 
 ### 4. Configure and build (via Makefile)
 
@@ -180,11 +239,9 @@ cmake --build build-debug --parallel --target smirkly-auth
 The devcontainer compose overlay defaults to `linux/amd64` because the current userver base image may not provide an
 Apple Silicon build. This does not affect production compose. Override it with `SMIRKLY_DOCKER_PLATFORM` if needed.
 
-Docker-specific runtime values live in `configs/config_vars.docker.yaml`; for real production, provide your own file with
-production DB, JWT, and SMTP values and mount it to `/app/configs/config_vars.yaml`. The production image starts with
-`configs/static_config.prod.yaml`, which intentionally does not load userver testsuite endpoints. Local development and
-tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep both
-`MIGRATE_DATABASE_URL` and the `postgres-dbconnection` value in `configs/config_vars.docker.yaml` in sync.
+Docker-specific runtime values live in `configs/config_vars.docker.yaml`. Treat this file as local/demo configuration only if it contains real credentials. For production, generate or mount `/app/configs/config_vars.yaml` from your deployment secret store and keep database passwords, JWT key paths, and SMTP credentials out of the image and repository.
+
+The production image starts with `configs/static_config.prod.yaml`, which intentionally does not load userver testsuite endpoints. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep both `MIGRATE_DATABASE_URL` and the `postgres-dbconnection` value in `configs/config_vars.docker.yaml` in sync.
 
 If your local `pgdata` volume was created before the migration runner was added, it may already contain tables but not
 the `schema_migrations` version table. For local development, recreate that database volume before the first

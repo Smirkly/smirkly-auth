@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Runbooks | Smirkly Auth</title>
+    <meta name="description" content="Operational runbooks for common smirkly-auth development and production issues.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html">Overview</a>
+          <a href="getting-started.html">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html">Deployment</a>
+          <a href="security.html">Security</a>
+          <a href="runbooks.html" aria-current="page">Runbooks</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="operations.html">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="content">
+          <p class="eyebrow">Runbooks</p>
+          <h1>Concrete commands for SMTP, verification, config reloads, local resets, and incidents.</h1>
+          <p class="lead">
+            Use this page when something is not working and you need the shortest safe path to isolate the layer that failed.
+          </p>
+
+          <h2>Fresh Local Database</h2>
+          <p>
+            For local testing, the fastest clean reset is to drop only the Compose database volume and re-run migrations.
+            Do this only for disposable development data.
+          </p>
+          <pre><code>docker compose down
+# Remove the local Postgres volume from Docker Desktop or with a project-specific volume command.
+docker compose up -d smirkly-postgres
+docker compose --profile dev run --rm smirkly-migrate-dev</code></pre>
+
+          <h2>SMTP Smoke Test</h2>
+          <p>From the same container or host network where the service runs, check the provider greeting.</p>
+          <pre><code>curl -v --connect-timeout 10 smtps://smtp.gmail.com:465
+curl -v --connect-timeout 10 smtp://smtp.gmail.com:587</code></pre>
+          <p>
+            If port <code>587</code> connects but never returns a greeting, switch Gmail local testing to
+            <code>AUTH_SMTP_PORT: 465</code> and <code>AUTH_SMTP_TLS_MODE: tls</code>, then restart the service.
+          </p>
+
+          <h2>Email Not Delivered</h2>
+          <ol>
+            <li>Check that sign-up returned <code>201</code> and the user email is correct.</li>
+            <li>Inspect <code>email_outbox</code> for status, attempt count, and latest error.</li>
+            <li>Check SMTP host, port, TLS mode, username, password, and provider account restrictions.</li>
+            <li>Use the resend endpoint after fixing SMTP config.</li>
+          </ol>
+          <pre><code>docker compose exec -T smirkly-postgres   psql -U smirkly_auth -d smirkly_auth   -c "SELECT id, to_email, status, attempts, next_attempt_at, locked_until, left(coalesce(last_error, ''), 300) AS last_error, created_at, updated_at FROM email_outbox ORDER BY created_at DESC LIMIT 10;"
+
+curl -i -X POST http://localhost:8080/auth/v0/verify-email/resend   -H 'Content-Type: application/json'   -d '{"email":"user@example.com"}'</code></pre>
+
+          <h2>Verification Code Expired</h2>
+          <p>
+            Expired or missing codes return <code>410</code>. Request a fresh code and submit the latest value from the
+            newest email, not an older message.
+          </p>
+          <pre><code>curl -i -X POST http://localhost:8080/auth/v0/verify-email   -H 'Content-Type: application/json'   -d '{"email":"user@example.com","code":"123456"}'</code></pre>
+
+          <h2>Config Changed But Behavior Did Not</h2>
+          <ul>
+            <li>If only <code>config_vars.yaml</code> changed, restart the running process or container.</li>
+            <li>If C++ source, SQL query files, or CMake source lists changed, rebuild the target and restart.</li>
+            <li>If migrations changed, run the migration job before the service version that depends on them.</li>
+          </ul>
+          <pre><code>cmake --build build-debug --parallel --target smirkly-auth
+./build-debug/smirkly-auth --config ./configs/static_config.yaml</code></pre>
+
+          <h2>Secret Exposure</h2>
+          <ol>
+            <li>Revoke or rotate the exposed credential at the provider.</li>
+            <li>Update the deployment secret source.</li>
+            <li>Restart service instances using that secret.</li>
+            <li>Search git history, logs, screenshots, docs, and issue comments for the old value.</li>
+            <li>Audit provider access logs if available.</li>
+          </ol>
+
+          <h2>Production Incident Signals</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Signal</th>
+                  <th>Likely cause</th>
+                  <th>First check</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Growing <code>email_outbox</code> pending backlog</td>
+                  <td>SMTP outage, credentials rejected, provider throttling, or worker not running.</td>
+                  <td>Outbox status query and service logs around SMTP errors.</td>
+                </tr>
+                <tr>
+                  <td>Spike in <code>403 EmailNotVerified</code></td>
+                  <td>Users cannot complete verification or policy was enabled unexpectedly.</td>
+                  <td>SMTP delivery and latest deployment config.</td>
+                </tr>
+                <tr>
+                  <td>Refresh reuse events</td>
+                  <td>Token theft, replay, client retry bug, or shared cookie store issue.</td>
+                  <td>Session family revocation logs and client release timeline.</td>
+                </tr>
+                <tr>
+                  <td>Database cast errors for IP fields</td>
+                  <td>Bad proxy header parsing or untrusted forwarded headers.</td>
+                  <td>Trusted proxy CIDRs and ingress header behavior.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

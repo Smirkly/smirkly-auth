@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deployment | Smirkly Auth</title>
+    <meta name="description" content="Production deployment workflow for smirkly-auth.">
+    <link rel="stylesheet" href="assets/site.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="index.html">
+          <span class="brand__name">smirkly-auth</span>
+          <span class="brand__meta">Authentication service</span>
+        </a>
+        <nav class="nav" aria-label="Documentation">
+          <a href="index.html">Overview</a>
+          <a href="getting-started.html">Getting Started</a>
+          <a href="configuration.html">Configuration</a>
+          <a href="deployment.html" aria-current="page">Deployment</a>
+          <a href="security.html">Security</a>
+          <a href="runbooks.html">Runbooks</a>
+          <a href="api.html">API Reference</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="operations.html">Operations</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="content">
+          <p class="eyebrow">Deployment</p>
+          <h1>Build, migrate, deploy, verify, and roll back without exposing test surfaces.</h1>
+          <p class="lead">
+            This page is the production rollout checklist for the service image, database schema, runtime configuration, and public documentation site.
+          </p>
+
+          <h2>Environment Layout</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Environment</th>
+                  <th>Static config</th>
+                  <th>Runtime values</th>
+                  <th>Expected use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Local process</td>
+                  <td><code>configs/static_config.yaml</code></td>
+                  <td><code>configs/config_vars.yaml</code></td>
+                  <td>Manual development and API poking.</td>
+                </tr>
+                <tr>
+                  <td>Dev Docker profile</td>
+                  <td><code>configs/static_config.yaml</code></td>
+                  <td><code>configs/config_vars.docker.yaml</code></td>
+                  <td>Containerized development with source mounted.</td>
+                </tr>
+                <tr>
+                  <td>Production Docker profile</td>
+                  <td><code>configs/static_config.prod.yaml</code></td>
+                  <td>Mounted/generated <code>/app/configs/config_vars.yaml</code></td>
+                  <td>Release image without source mount or testsuite endpoints.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2>Build and Release Gate</h2>
+          <p>
+            A release candidate should build the service, compile SQL query headers, run unit tests, run the functional
+            testsuite, and validate the OpenAPI YAML before deployment.
+          </p>
+          <pre><code>cmake --build cmake-build-debug -j$(nproc) --target smirkly-auth smirkly-auth_unittest
+ctest --test-dir cmake-build-debug --output-on-failure
+ruby -e "require 'yaml'; YAML.load_file('openapi/auth-v0.yaml')"</code></pre>
+          <p>
+            The GitHub Pages workflow publishes <code>docs/</code> plus the current <code>openapi/auth-v0.yaml</code>, so API
+            docs and the deployed contract move together.
+          </p>
+
+          <h2>Database Migrations</h2>
+          <ul>
+            <li>Run the migration job before starting a service version that depends on new schema.</li>
+            <li>Keep <code>MIGRATE_DATABASE_URL</code> and service <code>postgres-dbconnection</code> pointed at the same database.</li>
+            <li>Do not run application schema from Postgres init scripts in production; use versioned migrations.</li>
+            <li>For local databases created before migration tracking, recreate the volume or baseline it manually after checking schema state.</li>
+          </ul>
+          <pre><code>docker compose --profile dev run --rm smirkly-migrate-dev
+
+docker compose --profile prod up --build -d smirkly-auth</code></pre>
+
+          <h2>Production Container Rules</h2>
+          <ul>
+            <li>Use the release image and <code>configs/static_config.prod.yaml</code>.</li>
+            <li>Mount JWT keys and generated runtime config at deploy time.</li>
+            <li>Keep testsuite, tests-control, and fake-mode endpoints out of the production static config.</li>
+            <li>Expose the service only through TLS-terminating ingress or a private service mesh.</li>
+            <li>Set resource limits so userver congestion control reflects real CPU constraints.</li>
+          </ul>
+
+          <h2>Rollout Sequence</h2>
+          <ol>
+            <li>Build and test the release candidate.</li>
+            <li>Generate environment-specific <code>config_vars.yaml</code> from the secret store.</li>
+            <li>Run migrations once per database.</li>
+            <li>Start the new service version with <code>static_config.prod.yaml</code>.</li>
+            <li>Check JWKS, sign-up, sign-in, refresh, logout, and email verification smoke tests.</li>
+            <li>Watch logs, SMTP outbox backlog, DB errors, latency, and 4xx/5xx rate for the rollout window.</li>
+          </ol>
+
+          <h2>Rollback</h2>
+          <p>
+            Prefer forward-compatible migrations. If rollback is required, stop the new service version first, deploy the
+            previous image with its matching runtime config, and only then decide whether a down migration is safe. Never
+            run a destructive down migration while a newer binary can still write to the database.
+          </p>
+
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
