@@ -50,27 +50,13 @@ POSTGRES_USER=smirkly_auth
 POSTGRES_PASSWORD=smirkly_auth
 MIGRATE_DATABASE_URL=postgres://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth?sslmode=disable</code></pre>
 
-          <p>Create <code>configs/config_vars.yaml</code>. Keep this file untracked because it may contain secrets.</p>
-          <pre><code>worker-threads: 4
-worker-fs-threads: 2
-worker-email-outbox-threads: 2
-logger-level: info
-is-testing: false
-server-port: 8080
-postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
-
-AUTH_JWT_AUDIENCE: smirkly-api
-AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
-AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
-AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
-
-AUTH_SMTP_HOST: smtp.localhost
-AUTH_SMTP_PORT: 587
-AUTH_SMTP_TLS_MODE: starttls
-AUTH_SMTP_USERNAME: local-dev-user
-AUTH_SMTP_APP_PASSWORD: local-dev-password
-AUTH_SMTP_FROM_EMAIL: no-reply@localhost
-AUTH_SMTP_FROM_NAME: Smirkly</code></pre>
+          <p>Copy the tracked example to local <code>configs/config_vars.yaml</code>. Keep the copied file untracked because it may contain secrets.</p>
+          <pre><code>cp configs/config_vars.docker.example.yaml configs/config_vars.yaml
+# If the service binary runs on the host instead of Compose, use localhost in postgres-dbconnection.</code></pre>
+          <p>
+            <code>configs/config_vars.docker.yaml</code> is ignored local runtime configuration for the dev Compose profile.
+            You may put real local SMTP credentials there, but never into tracked example files.
+          </p>
           <p>
             For Gmail-based local testing, use an app password, port <code>465</code>, and
             <code>AUTH_SMTP_TLS_MODE: tls</code>. Port <code>587</code> should use
@@ -112,15 +98,18 @@ make build-debug
 make test-debug</code></pre>
 
           <h2>Docker</h2>
-          <pre><code>docker compose --profile dev up --build smirkly-auth-dev
+          <pre><code>cp configs/config_vars.docker.example.yaml configs/config_vars.docker.yaml
+docker compose --profile dev up --build smirkly-auth-dev
 docker compose --profile dev run --rm smirkly-migrate-dev
 docker compose exec smirkly-auth-dev cmake --build build-debug --parallel --target smirkly-auth
 docker compose restart smirkly-auth-dev
 
+SMIRKLY_CONFIG_VARS_PATH=/etc/smirkly-auth/config_vars.yaml \
+SMIRKLY_SECRETS_PATH=/run/secrets/smirkly-auth \
 docker compose --profile prod up --build -d smirkly-auth</code></pre>
           <p>
             The dev profile mounts the source tree and keeps <code>build-debug</code> in a Docker volume.
-            The prod profile builds release app and migration images and runs without mounting source code.
+            The prod profile builds release app and migration images, runs without mounting source code, and should receive runtime config and secrets from outside the repository.
           </p>
           <p>
             Compose uses the host's native platform by default. On Apple Silicon, if the userver base image has no

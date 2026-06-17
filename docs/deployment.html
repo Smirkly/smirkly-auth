@@ -56,13 +56,13 @@
                 <tr>
                   <td>Dev Docker profile</td>
                   <td><code>configs/static_config.yaml</code></td>
-                  <td><code>configs/config_vars.docker.yaml</code></td>
+                  <td><code>configs/config_vars.docker.yaml</code>, copied from example</td>
                   <td>Containerized development with source mounted.</td>
                 </tr>
                 <tr>
                   <td>Production Docker profile</td>
                   <td><code>configs/static_config.prod.yaml</code></td>
-                  <td>Mounted/generated <code>/app/configs/config_vars.yaml</code></td>
+                  <td>External <code>SMIRKLY_CONFIG_VARS_PATH</code> and <code>SMIRKLY_SECRETS_PATH</code></td>
                   <td>Release image without source mount or testsuite endpoints.</td>
                 </tr>
               </tbody>
@@ -85,18 +85,20 @@ ruby -e "require 'yaml'; YAML.load_file('openapi/auth-v0.yaml')"</code></pre>
           <h2>Database Migrations</h2>
           <ul>
             <li>Run the migration job before starting a service version that depends on new schema.</li>
-            <li>Keep <code>MIGRATE_DATABASE_URL</code> and service <code>postgres-dbconnection</code> pointed at the same database.</li>
+            <li>Keep <code>MIGRATE_DATABASE_URL</code> and service <code>postgres-dbconnection</code> pointed at the same database; both should come from the deployment secret/config source.</li>
             <li>Do not run application schema from Postgres init scripts in production; use versioned migrations.</li>
             <li>For local databases created before migration tracking, recreate the volume or baseline it manually after checking schema state.</li>
           </ul>
           <pre><code>docker compose --profile dev run --rm smirkly-migrate-dev
 
+SMIRKLY_CONFIG_VARS_PATH=/etc/smirkly-auth/config_vars.yaml \
+SMIRKLY_SECRETS_PATH=/run/secrets/smirkly-auth \
 docker compose --profile prod up --build -d smirkly-auth</code></pre>
 
           <h2>Production Container Rules</h2>
           <ul>
             <li>Use the release image and <code>configs/static_config.prod.yaml</code>.</li>
-            <li>Mount JWT keys and generated runtime config at deploy time.</li>
+            <li>Mount JWT keys and generated runtime config at deploy time through <code>SMIRKLY_SECRETS_PATH</code> and <code>SMIRKLY_CONFIG_VARS_PATH</code>.</li>
             <li>Keep testsuite, tests-control, and fake-mode endpoints out of the production static config.</li>
             <li>Expose the service only through TLS-terminating ingress or a private service mesh.</li>
             <li>Set resource limits so userver congestion control reflects real CPU constraints.</li>
@@ -105,7 +107,7 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
           <h2>Rollout Sequence</h2>
           <ol>
             <li>Build and test the release candidate.</li>
-            <li>Generate environment-specific <code>config_vars.yaml</code> from the secret store.</li>
+            <li>Generate environment-specific <code>config_vars.yaml</code> from the secret store and expose it through <code>SMIRKLY_CONFIG_VARS_PATH</code>.</li>
             <li>Run migrations once per database.</li>
             <li>Start the new service version with <code>static_config.prod.yaml</code>.</li>
             <li>Check JWKS, sign-up, sign-in, refresh, logout, and email verification smoke tests.</li>

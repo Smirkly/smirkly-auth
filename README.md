@@ -58,32 +58,15 @@ configs.
 
 ### 3. Create configs/config_vars.yaml
 
-Create configs/config_vars.yaml with basic runtime options, for example:
+`configs/config_vars.yaml` is the local runtime config consumed by `static_config.yaml`. It is ignored by Git because it may contain database passwords, SMTP credentials, or environment-specific hostnames. Start from the tracked example and adjust the database host for your run mode:
 
-```yaml
-worker-threads: 4
-worker-fs-threads: 2
-worker-email-outbox-threads: 2
-logger-level: info
-
-is-testing: false
-
-server-port: 8080
-postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
-
-AUTH_JWT_AUDIENCE: smirkly-api
-AUTH_JWT_KEY_ID: smirkly-auth-local-rs256
-AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
-AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
-
-AUTH_SMTP_HOST: smtp.localhost
-AUTH_SMTP_PORT: 587
-AUTH_SMTP_TLS_MODE: starttls
-AUTH_SMTP_USERNAME: local-dev-user
-AUTH_SMTP_APP_PASSWORD: local-dev-password
-AUTH_SMTP_FROM_EMAIL: no-reply@localhost
-AUTH_SMTP_FROM_NAME: Smirkly
+```bash
+cp configs/config_vars.docker.example.yaml configs/config_vars.yaml
+# For a binary running on the host, use localhost instead of the Compose service name:
+# postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@localhost:5432/smirkly_auth
 ```
+
+`configs/config_vars.docker.yaml` is the dev Docker runtime config consumed by Compose, but it is ignored by Git. Create it from `configs/config_vars.docker.example.yaml` and put your real local SMTP values there if needed. Production should generate `config_vars.yaml` from a deployment secret source and mount it read-only.
 
 worker-threads / worker-fs-threads - userver task processors.
 
@@ -190,7 +173,8 @@ The compose file has two app profiles:
 
 ```bash
 # Active development: source is mounted, build-debug is a Docker volume.
-# Runs smirkly-migrate-dev before starting the app.
+# Create the ignored dev Docker runtime config once, then start the app.
+cp configs/config_vars.docker.example.yaml configs/config_vars.docker.yaml
 docker compose --profile dev up --build smirkly-auth-dev
 
 # Apply pending migrations manually, useful after adding a new migration.
@@ -201,7 +185,10 @@ docker compose exec smirkly-auth-dev cmake --build build-debug --parallel --targ
 docker compose restart smirkly-auth-dev
 
 # Production-style run: release binary is baked into the image, no source mount.
-# Runs smirkly-migrate before starting the app.
+# Runs smirkly-migrate before starting the app. The runtime config and JWT keys
+# must come from outside the repository.
+SMIRKLY_CONFIG_VARS_PATH=/etc/smirkly-auth/config_vars.yaml \
+SMIRKLY_SECRETS_PATH=/run/secrets/smirkly-auth \
 docker compose --profile prod up --build -d smirkly-auth
 ```
 
@@ -221,7 +208,8 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.linux-amd64.yml
 
 Both profiles use `smirkly-postgres` and run migrations with `golang-migrate` before the auth service starts. Dev uses
 the upstream `migrate/migrate` image with `./migrations` mounted read-only. Prod builds a `smirkly-auth-migrate:prod`
-image that contains the migration files, so the production runner does not need source code mounted.
+image that contains the migration files, so the production runner does not need source code mounted. In real deployments,
+provide `MIGRATE_DATABASE_URL` from the same secret/config source that renders `postgres-dbconnection`.
 
 ### Devcontainer
 
@@ -239,9 +227,9 @@ cmake --build build-debug --parallel --target smirkly-auth
 The devcontainer compose overlay defaults to `linux/amd64` because the current userver base image may not provide an
 Apple Silicon build. This does not affect production compose. Override it with `SMIRKLY_DOCKER_PLATFORM` if needed.
 
-Docker-specific runtime values live in `configs/config_vars.docker.yaml`. Treat this file as local/demo configuration only if it contains real credentials. For production, generate or mount `/app/configs/config_vars.yaml` from your deployment secret store and keep database passwords, JWT key paths, and SMTP credentials out of the image and repository.
+Docker-specific runtime values live in ignored `configs/config_vars.docker.yaml`. `configs/config_vars.docker.example.yaml` is the tracked template that documents the full shape of the runtime config. For production, the Compose profile defaults to ignored local prod-style paths, but real deployments should set `SMIRKLY_CONFIG_VARS_PATH` and `SMIRKLY_SECRETS_PATH`; point them at files generated or mounted by your deployment platform, not at repository files with real secrets.
 
-The production image starts with `configs/static_config.prod.yaml`, which intentionally does not load userver testsuite endpoints. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep both `MIGRATE_DATABASE_URL` and the `postgres-dbconnection` value in `configs/config_vars.docker.yaml` in sync.
+The production image starts with `configs/static_config.prod.yaml`, which intentionally does not load userver testsuite endpoints. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep `MIGRATE_DATABASE_URL` and the generated production `postgres-dbconnection` pointed at the same database.
 
 If your local `pgdata` volume was created before the migration runner was added, it may already contain tables but not
 the `schema_migrations` version table. For local development, recreate that database volume before the first

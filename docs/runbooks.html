@@ -81,6 +81,17 @@ curl -i -X POST http://localhost:8080/auth/v0/verify-email/resend   -H 'Content-
           <pre><code>cmake --build build-debug --parallel --target smirkly-auth
 ./build-debug/smirkly-auth --config ./configs/static_config.yaml</code></pre>
 
+          <h2>Production Config Mount Check</h2>
+          <ol>
+            <li>Confirm <code>SMIRKLY_CONFIG_VARS_PATH</code> points to a generated <code>config_vars.yaml</code> outside the repository.</li>
+            <li>Confirm <code>SMIRKLY_SECRETS_PATH</code> points to a read-only directory with JWT key files.</li>
+            <li>Confirm tracked example files such as <code>configs/config_vars.docker.example.yaml</code> contain only demo credentials.</li>
+            <li>Restart the service after changing mounted config or secrets.</li>
+          </ol>
+          <pre><code>SMIRKLY_CONFIG_VARS_PATH=/etc/smirkly-auth/config_vars.yaml \
+SMIRKLY_SECRETS_PATH=/run/secrets/smirkly-auth \
+docker compose --profile prod config</code></pre>
+
           <h2>Secret Exposure</h2>
           <ol>
             <li>Revoke or rotate the exposed credential at the provider.</li>

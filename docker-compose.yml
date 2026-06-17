@@ -100,8 +100,8 @@ services:
     container_name: smirkly-auth
     restart: unless-stopped
     volumes:
-      - ./configs/config_vars.docker.yaml:/app/configs/config_vars.yaml:ro
-      - ./configs/secrets:/app/configs/secrets:ro
+      - ${SMIRKLY_CONFIG_VARS_PATH:-./configs/config_vars.prod.yaml}:/app/configs/config_vars.yaml:ro
+      - ${SMIRKLY_SECRETS_PATH:-./configs/secrets}:/app/configs/secrets:ro
 
 volumes:
   pgdata:

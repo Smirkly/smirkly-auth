@@ -64,12 +64,17 @@
                 <tr>
                   <td><code>configs/config_vars.yaml</code></td>
                   <td>Runtime values loaded by the static config.</td>
-                  <td>Generate or mount it from a secret store; do not bake real secrets into the image.</td>
+                  <td>Ignored locally; generate or mount it from a secret store in production.</td>
+                </tr>
+                <tr>
+                  <td><code>configs/config_vars.docker.example.yaml</code></td>
+                  <td>Tracked example that documents the runtime config shape.</td>
+                  <td>Keep demo-safe; copy it as a starting point, never as a production secret source.</td>
                 </tr>
                 <tr>
                   <td><code>configs/config_vars.docker.yaml</code></td>
-                  <td>Local Docker/devcontainer values.</td>
-                  <td>Treat as local/demo config when it contains credentials.</td>
+                  <td>Ignored local Docker/devcontainer runtime values.</td>
+                  <td>Create it from the tracked example; local real credentials may live here because it is not committed.</td>
                 </tr>
                 <tr>
                   <td><code>.env</code></td>
@@ -79,6 +84,23 @@
               </tbody>
             </table>
           </div>
+
+          <h2>Secret Delivery Model</h2>
+          <p>
+            Production should treat the Docker image as immutable and secret-free. The compose defaults point at ignored local prod-style paths for manual smoke runs, while the deploy layer reads a secret source
+            such as a platform secret store, Vault, Yandex Lockbox, Kubernetes Secret, or Docker secret, renders
+            <code>config_vars.yaml</code>, and mounts it read-only into the container. JWT key files are mounted through
+            a separate secrets directory referenced by <code>AUTH_JWT_PRIVATE_KEY_PATH</code> and
+            <code>AUTH_JWT_PUBLIC_KEY_PATH</code>.
+          </p>
+          <pre><code>SMIRKLY_CONFIG_VARS_PATH=/etc/smirkly-auth/config_vars.yaml \
+SMIRKLY_SECRETS_PATH=/run/secrets/smirkly-auth \
+docker compose --profile prod up --build -d smirkly-auth</code></pre>
+          <p>
+            SMTP passwords, database passwords, migration database URLs, and JWT private keys must not be committed, baked into the image,
+            or stored in tracked demo configs. Changing these values requires regenerating the mounted config or secret
+            and restarting the service instances.
+          </p>
 
           <h2>Runtime Variables</h2>
           <div class="table-wrap">

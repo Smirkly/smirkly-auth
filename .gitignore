@@ -27,6 +27,9 @@ Testing/
 .env
 *.env.*
 config_vars.yaml
+configs/config_vars.local.yaml
+configs/config_vars.docker.yaml
+configs/config_vars.prod.yaml
 dynamic_config.json
 configs/secrets/
 
