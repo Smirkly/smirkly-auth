@@ -6,7 +6,7 @@
 #include <userver/components/component_context.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
-#include <auth/config/auth_config.hpp>
+#include <auth/config/auth_security_config.hpp>
 #include <auth/infra/ids/uuid_generator.hpp>
 #include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
 #include <auth/infra/security/password/bcrypt_password_hasher.hpp>

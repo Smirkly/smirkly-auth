@@ -5,6 +5,9 @@
 
 #include <userver/utils/periodic_task.hpp>
 
+#include <auth/infra/workers/email_outbox_runtime_config.hpp>
+#include <auth/infra/workers/email_outbox_runtime_config_provider.hpp>
+
 namespace userver::engine {
     class TaskProcessor;
 }
@@ -16,16 +19,9 @@ namespace smirkly::auth::services::ports {
 }
 
 namespace smirkly::auth::infra::workers {
-    struct EmailOutboxProcessorConfig {
+    struct EmailOutboxWorkerStaticConfig final {
         bool enabled{true};
         std::chrono::milliseconds poll_interval{1000};
-        std::size_t batch_size{20};
-
-        std::size_t max_attempts{10};
-        std::chrono::seconds stuck_timeout{300};
-
-        std::chrono::seconds retry_base_delay{2};
-        std::chrono::seconds retry_max_delay{600};
     };
 
     class EmailOutboxProcessor final {
@@ -34,7 +30,8 @@ namespace smirkly::auth::infra::workers {
                              services::ports::EmailOutboxRepository &outbox_repo,
                              services::ports::EmailVerificationSender &sender,
                              userver::engine::TaskProcessor &task_processor,
-                             EmailOutboxProcessorConfig cfg);
+                             EmailOutboxWorkerStaticConfig static_config,
+                             const EmailOutboxRuntimeConfigProvider &runtime_config_provider);
 
         ~EmailOutboxProcessor();
 
@@ -49,7 +46,9 @@ namespace smirkly::auth::infra::workers {
     private:
         void Tick();
 
-        std::chrono::seconds ComputeRetryDelay(std::size_t attempt) const;
+        std::chrono::seconds ComputeRetryDelay(
+            std::size_t attempt,
+            const EmailOutboxRuntimeConfig &cfg) const;
 
     private:
         services::ports::TransactionManager &tx_manager_;
@@ -57,7 +56,8 @@ namespace smirkly::auth::infra::workers {
         services::ports::EmailVerificationSender &sender_;
         userver::engine::TaskProcessor &task_processor_;
 
-        EmailOutboxProcessorConfig cfg_;
+        EmailOutboxWorkerStaticConfig static_config_;
+        const EmailOutboxRuntimeConfigProvider &runtime_config_provider_;
         userver::utils::PeriodicTask task_;
         bool started_{false};
     };

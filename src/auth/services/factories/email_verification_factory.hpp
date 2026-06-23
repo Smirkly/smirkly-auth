@@ -14,7 +14,7 @@ namespace smirkly::auth::services::factories {
             std::string code_hash,
             const contracts::RequestMeta &meta,
             std::chrono::system_clock::time_point now,
-            std::chrono::minutes ttl
+            std::chrono::seconds ttl
         );
     };
 }

@@ -19,6 +19,8 @@
 #include <auth/services/ports/support/id_generator.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
+#include <auth/services/ports/config/auth_runtime_policy_provider.hpp>
+#include <auth/services/policies/auth_runtime_policies.hpp>
 #include <auth/services/policies/email_verification_policy.hpp>
 #include <auth/services/policies/session_policy.hpp>
 #include <auth/services/policies/sign_in_policy.hpp>
@@ -40,7 +42,8 @@ namespace smirkly::auth::services::usecases {
             ports::support::IdGenerator &id_generator,
             policies::SessionPolicy session_policy,
             policies::SignInPolicy sign_in_policy = {},
-            policies::EmailVerificationPolicy email_verification_policy = {}
+            policies::EmailVerificationPolicy email_verification_policy = {},
+            const ports::config::AuthRuntimePolicyProvider *runtime_policy_provider = nullptr
             /* dependences */);
 
         contracts::SignUpResult SignUp(
@@ -84,6 +87,8 @@ namespace smirkly::auth::services::usecases {
         );
 
     private:
+        policies::AuthRuntimePolicies GetRuntimePolicies() const;
+
         ports::UserRepository &user_repo_;
         ports::EmailOutboxRepository &email_outbox_repo_;
         ports::EmailVerificationRepository &email_verification_repo_;
@@ -94,6 +99,7 @@ namespace smirkly::auth::services::usecases {
         ports::PasswordHasher &password_hasher_;
         ports::VerificationCodeGenerator &code_generator_;
         ports::support::IdGenerator &id_generator_;
+        const ports::config::AuthRuntimePolicyProvider *runtime_policy_provider_;
         policies::EmailVerificationPolicy email_verification_policy_;
         policies::SessionPolicy session_policy_;
         policies::SignInPolicy sign_in_policy_;

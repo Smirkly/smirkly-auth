@@ -1,4 +1,4 @@
-#include <auth/config/auth_config.hpp>
+#include <auth/config/auth_security_config.hpp>
 
 #include <cstdint>
 #include <fstream>

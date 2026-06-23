@@ -1,67 +1,26 @@
 #include <auth/components/email_outbox_worker_component.hpp>
 
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
 #include <memory>
-#include <stdexcept>
-#include <string>
-#include <string_view>
 
 #include <userver/components/component_config.hpp>
 #include <userver/components/component_context.hpp>
+#include <userver/dynamic_config/storage/component.hpp>
 #include <userver/logging/log.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <auth/components/auth_infra_component.hpp>
+#include <auth/config/email_outbox_worker_config.hpp>
+#include <auth/config/runtime_config_providers.hpp>
 #include <auth/infra/messaging/smtp/smtp_email_sender.hpp>
 #include <auth/infra/providers/email/log_email_verification_sender.hpp>
 #include <auth/infra/providers/email/smtp_email_verification_sender.hpp>
 #include <auth/infra/workers/email_outbox_processor.hpp>
 
 namespace smirkly::auth::components {
-    namespace {
-        infra::messaging::smtp::TlsMode ParseTlsMode(std::string_view s) {
-            if (s == "none") return infra::messaging::smtp::TlsMode::kNone;
-            if (s == "starttls") return infra::messaging::smtp::TlsMode::kStartTls;
-            if (s == "tls") return infra::messaging::smtp::TlsMode::kTls;
-            throw std::runtime_error("invalid smtp.tls_mode: " + std::string{s});
-        }
-
-        infra::messaging::smtp::SmtpConfig BuildSmtpConfig(const userver::components::ComponentConfig &cfg) {
-            const auto &s = cfg["smtp"];
-
-            infra::messaging::smtp::SmtpConfig out;
-            out.host = s["host"].As<std::string>();
-            out.port = static_cast<std::uint16_t>(s["port"].As<int>(587));
-            out.tls_mode = ParseTlsMode(s["tls_mode"].As<std::string>("starttls"));
-            out.username = s["username"].As<std::string>();
-            out.app_password = s["app_password"].As<std::string>();
-            out.connect_timeout_ms = std::chrono::milliseconds{s["connect_timeout_ms"].As<int>(20000)};
-            out.timeout_ms = std::chrono::milliseconds{s["timeout_ms"].As<int>(30000)};
-            return out;
-        }
-
-        infra::workers::EmailOutboxProcessorConfig BuildWorkerConfig(const userver::components::ComponentConfig &cfg) {
-            infra::workers::EmailOutboxProcessorConfig out;
-
-            out.enabled = cfg["enabled"].As<bool>(true);
-            out.poll_interval = std::chrono::milliseconds{cfg["poll_interval_ms"].As<int>(1000)};
-            out.batch_size = static_cast<std::size_t>(cfg["batch_size"].As<int>(20));
-
-            out.max_attempts = static_cast<std::size_t>(cfg["max_attempts"].As<int>(10));
-            out.stuck_timeout = std::chrono::seconds{cfg["stuck_timeout_seconds"].As<int>(300)};
-
-            out.retry_base_delay = std::chrono::seconds{cfg["retry_base_delay_seconds"].As<int>(2)};
-            out.retry_max_delay = std::chrono::seconds{cfg["retry_max_delay_seconds"].As<int>(600)};
-            return out;
-        }
-    }
-
     struct EmailOutboxWorkerComponent::Impl {
         AuthInfraComponent &infra;
-
-        infra::workers::EmailOutboxProcessorConfig worker_cfg;
+        config::EmailOutboxWorkerConfig worker_config;
+        config::DynamicConfigEmailOutboxRuntimeConfigProvider runtime_config_provider;
 
         std::unique_ptr<infra::providers::email::SmtpEmailVerificationSender> smtp_verification_sender;
         std::unique_ptr<infra::providers::email::LogEmailVerificationSender> verification_sender;
@@ -70,23 +29,21 @@ namespace smirkly::auth::components {
         Impl(const userver::components::ComponentConfig &cfg,
              const userver::components::ComponentContext &ctx)
             : infra(ctx.FindComponent<AuthInfraComponent>(AuthInfraComponent::kName))
-              , worker_cfg(BuildWorkerConfig(cfg)) {
-            if (!worker_cfg.enabled) {
+              , worker_config(config::ParseEmailOutboxWorkerConfig(cfg))
+              , runtime_config_provider(
+                    ctx.FindComponent<userver::components::DynamicConfig>().GetSource()) {
+            if (!worker_config.enabled) {
                 LOG_INFO() << "EmailOutboxWorkerComponent disabled by config";
                 return;
             }
 
-            const auto tp_name = cfg["task_processor"].As<std::string>("email-outbox-task-processor");
-            auto &tp = ctx.GetTaskProcessor(tp_name);
-
-            const auto from_email = cfg["smtp"]["from_email"].As<std::string>();
-            const auto from_name = cfg["smtp"]["from_name"].As<std::string>("");
+            auto &tp = ctx.GetTaskProcessor(worker_config.task_processor_name);
 
             smtp_verification_sender = std::make_unique<infra::providers::email::SmtpEmailVerificationSender>(
                 std::make_unique<infra::messaging::SmtpEmailSender>(
-                    BuildSmtpConfig(cfg),
-                    from_email,
-                    from_name)
+                    worker_config.smtp,
+                    worker_config.from_email,
+                    worker_config.from_name)
             );
 
             verification_sender = std::make_unique<infra::providers::email::LogEmailVerificationSender>(
@@ -98,7 +55,8 @@ namespace smirkly::auth::components {
                 infra.GetEmailOutboxRepository(),
                 *verification_sender,
                 tp,
-                worker_cfg
+                worker_config.worker,
+                runtime_config_provider
             );
         }
     };
@@ -153,31 +111,6 @@ properties:
     type: integer
     description: Poll interval in milliseconds
     default: 1000
-
-  batch_size:
-    type: integer
-    description: Max jobs per tick
-    default: 20
-
-  max_attempts:
-    type: integer
-    description: Max attempts before marking job dead
-    default: 10
-
-  stuck_timeout_seconds:
-    type: integer
-    description: Requeue jobs stuck in processing longer than this
-    default: 300
-
-  retry_base_delay_seconds:
-    type: integer
-    description: Base delay for exponential backoff
-    default: 2
-
-  retry_max_delay_seconds:
-    type: integer
-    description: Max delay cap for exponential backoff
-    default: 600
 
   smtp:
     type: object
