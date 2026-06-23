@@ -19,7 +19,7 @@ FROM dev AS builder
 COPY . /src
 WORKDIR /src
 
-RUN cmake --preset release -DUSERVER_PYTHON=/usr/bin/python3 \
+RUN cmake --preset release -DUSERVER_PYTHON=/usr/bin/python3 -DSMIRKLY_AUTH_ENABLE_TESTSUITE=OFF -DSMIRKLY_AUTH_ENABLE_TEST_CONTROL=OFF \
     && cmake --build build-release -j"$(nproc)" --target smirkly-auth \
     && cmake --install build-release --component smirkly-auth --prefix /opt/smirkly-auth
 

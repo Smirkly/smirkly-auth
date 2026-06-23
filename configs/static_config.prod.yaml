@@ -1,16 +1,30 @@
 config_vars: configs/config_vars.yaml
 
 components_manager:
+    event_thread_pool:
+        threads: $event-threads
+        threads#fallback: 2
+
     task_processors:
         main-task-processor:
+            thread_name: main-worker
             worker_threads: $worker-threads
+            worker_threads#fallback: 4
 
         fs-task-processor:
+            thread_name: fs-worker
             worker_threads: $worker-fs-threads
+            worker_threads#fallback: 2
+
+        monitor-task-processor:
+            thread_name: mon-worker
+            worker_threads: $worker-monitor-threads
+            worker_threads#fallback: 1
 
         email-outbox-task-processor:
-            thread_name: email
+            thread_name: email-worker
             worker_threads: $worker-email-outbox-threads
+            worker_threads#fallback: 1
 
     default_task_processor: main-task-processor
 
@@ -45,13 +59,6 @@ components_manager:
             task_processor: email-outbox-task-processor
 
             poll_interval_ms: 1000
-            batch_size: 20
-
-            max_attempts: 10
-            stuck_timeout_seconds: 300
-
-            retry_base_delay_seconds: 2
-            retry_max_delay_seconds: 600
 
             smtp:
                 host: $AUTH_SMTP_HOST
@@ -67,21 +74,16 @@ components_manager:
         auth-service:
             infra-component: auth-infra
             security-component: auth-security
-            sign-in:
-                require-verified-email: false
-            session-activity:
-                update-threshold-seconds: 300
-            email-verification:
-                max-code-attempts: 5
-                rate-limit-window-seconds: 900
-                max-attempts-per-email: 5
-                max-attempts-per-user: 5
-                max-attempts-per-ip: 50
-
         server:
             listener:
                 port: $server-port
+                port#fallback: 8080
                 task_processor: main-task-processor
+
+            listener-monitor:
+                port: $monitor-server-port
+                port#fallback: 8081
+                task_processor: monitor-task-processor
 
         logging:
             fs-task-processor: fs-task-processor
@@ -92,16 +94,89 @@ components_manager:
                     overflow_behavior: discard
 
         dynamic-config:
+            updates-enabled: $dynamic-config-updates-enabled
+            updates-enabled#fallback: true
+            fs-cache-path: $dynamic-config-cache-path
             defaults:
                 HTTP_CLIENT_CONNECTION_POOL_SIZE: 1000
+                USERVER_RPS_CCONTROL_ENABLED: true
+                POSTGRES_DEFAULT_COMMAND_CONTROL:
+                    network_timeout_ms: 1000
+                    statement_timeout_ms: 1000
+
+        dynamic-config-client:
+            load-enabled: $dynamic-config-updates-enabled
+            load-enabled#fallback: true
+            http-client: http-client
+            config-url: $dynamic-config-server-url
+            http-retries: 5
+            http-timeout: 20s
+            service-name: $dynamic-config-service-name
+            service-name#fallback: smirkly-auth
+
+        dynamic-config-client-updater:
+            load-enabled: $dynamic-config-updates-enabled
+            load-enabled#fallback: true
+            config-settings: false
+            first-update-fail-ok: true
+            full-update-interval: $dynamic-config-full-update-interval
+            full-update-interval#fallback: 1m
+            update-interval: $dynamic-config-update-interval
+            update-interval#fallback: 5s
+
+        testsuite-support: {}
 
         congestion-control:
             fake-mode: false
             only-rtc: false
             min-cpu: 1
+            load-enabled: true
+
+        http-client:
+        http-client-middleware-pipeline:
+        http-client-core:
+            fs-task-processor: fs-task-processor
+            user-agent: smirkly-auth
 
         dns-client:
             fs-task-processor: fs-task-processor
+
+        handler-ping:
+            path: /ping
+            method: GET
+            task_processor: main-task-processor
+            throttling_enabled: false
+
+        handler-server-monitor:
+            path: /service/monitor
+            method: GET
+            task_processor: monitor-task-processor
+            format: prometheus
+
+        handler-log-level:
+            path: /service/log-level/{level}
+            method: GET,PUT
+            task_processor: monitor-task-processor
+
+        handler-dynamic-debug-log:
+            path: /service/log/dynamic-debug
+            method: GET,PUT,DELETE
+            task_processor: monitor-task-processor
+
+        handler-inspect-requests:
+            path: /service/inspect-requests
+            method: GET
+            task_processor: monitor-task-processor
+
+        handler-dns-client-control:
+            path: /service/dnsclient/{command}
+            method: POST
+            task_processor: monitor-task-processor
+
+        handler-on-log-rotate:
+            path: /service/on-log-rotate/
+            method: POST
+            task_processor: monitor-task-processor
 
         handler-auth-sign-up:
             path: /auth/v0/sign-up

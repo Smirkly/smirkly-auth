@@ -1,4 +1,6 @@
+event-threads: 2
 worker-threads: 4
+worker-monitor-threads: 1
 worker-fs-threads: 2
 worker-email-outbox-threads: 2
 logger-level: info
@@ -6,6 +8,13 @@ logger-level: info
 is-testing: false
 
 server-port: 8080
+monitor-server-port: 8081
+dynamic-config-updates-enabled: false
+dynamic-config-cache-path: /tmp/smirkly-auth-dynamic-config-cache.json
+dynamic-config-server-url: http://localhost:8083/
+dynamic-config-service-name: smirkly-auth
+dynamic-config-update-interval: 5s
+dynamic-config-full-update-interval: 1m
 postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth
 
 AUTH_JWT_AUDIENCE: smirkly-api

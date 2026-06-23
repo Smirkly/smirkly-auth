@@ -92,8 +92,14 @@ target_link_libraries(
 )
 
 
+option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" ON)
+option(SMIRKLY_AUTH_ENABLE_TEST_CONTROL "Enable runtime tests-control component" OFF)
+
 # The Service
 add_executable(${PROJECT_NAME} src/main.cpp)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        SMIRKLY_AUTH_ENABLE_TEST_CONTROL=$<BOOL:${SMIRKLY_AUTH_ENABLE_TEST_CONTROL}>
+)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ${PROJECT_NAME}_objs
 )
@@ -128,8 +134,6 @@ if (PROJECT_BENCH_SOURCES)
 endif ()
 
 # Functional testing
-option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" ON)
-
 if (SMIRKLY_AUTH_ENABLE_TESTSUITE)
     set(SMIRKLY_AUTH_TESTSUITE_ARGS
             SERVICE_TARGET ${PROJECT_NAME}
