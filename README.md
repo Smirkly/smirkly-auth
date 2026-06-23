@@ -68,13 +68,34 @@ cp configs/config_vars.docker.example.yaml configs/config_vars.yaml
 
 `configs/config_vars.docker.yaml` is the dev Docker runtime config consumed by Compose, but it is ignored by Git. Create it from `configs/config_vars.docker.example.yaml` and put your real local SMTP values there if needed. Production should generate `config_vars.yaml` from a deployment secret source and mount it read-only.
 
-worker-threads / worker-fs-threads - userver task processors.
+event-threads - userver event loop threads. Treat this as startup infrastructure config and change it through deploy config plus rolling restart.
+
+worker-threads / worker-fs-threads - userver task processors for request handling and blocking filesystem/utility work.
+
+worker-monitor-threads - dedicated task processor for monitor/admin handlers, so diagnostics remain reachable under request load.
 
 worker-email-outbox-threads - dedicated task processor threads for SMTP delivery. Keep SMTP work off the main request processor.
 
 logger-level - log level (trace, debug, info, warning, error...).
 
 server-port - HTTP port for the auth service.
+
+monitor-server-port - private monitor listener for `/ping` and `/service/*` operational handlers. Do not expose it to the public internet.
+
+dynamic-config-updates-enabled - `false` for local/docker development, `true` in production when a config service is available.
+
+dynamic-config-cache-path - filesystem cache for the last successful production dynamic config snapshot. Mount it on persistent writable storage.
+
+dynamic-config-server-url / dynamic-config-service-name - config-service endpoint and service id used by userver dynamic-config-client.
+
+dynamic-config-update-interval / dynamic-config-full-update-interval - polling cadence for production runtime policy updates.
+
+Runtime auth and outbox policies are modeled as typed userver dynamic configs:
+
+- `SMIRKLY_AUTH_RUNTIME_CONFIG` controls sign-in policy, session activity write threshold, email verification code TTL, and verification rate limits.
+- `SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG` controls outbox processing kill switch, batch size, max attempts, stuck timeout, and retry backoff.
+
+Local and docker development use the C++ defaults from `dynamic_config::Key`. Production should fetch those keys from config-service through `dynamic-config-client-updater` and keep `dynamic-config.fs-cache-path` available for fallback on restart. Thread counts, ports, DSNs, SMTP credentials, and JWT key paths are startup/runtime variables, not dynamic config. Change them through deployment config and a rolling restart.
 
 `AUTH_SMTP_*` controls outbound email verification delivery. `AUTH_SMTP_TLS_MODE` should match the provider port:
 
@@ -165,6 +186,9 @@ make test-debug
 
 ```
 
+Functional testsuite starts its own PostgreSQL via `initdb`; run it as a non-root user. A root dev container can build and run unit tests, but testsuite PostgreSQL startup will fail with `initdb: cannot be run as root`.
+
+
 The resulting binary will be in build-debug/ (for debug preset).
 
 ## Docker
@@ -229,7 +253,7 @@ Apple Silicon build. This does not affect production compose. Override it with `
 
 Docker-specific runtime values live in ignored `configs/config_vars.docker.yaml`. `configs/config_vars.docker.example.yaml` is the tracked template that documents the full shape of the runtime config. For production, the Compose profile defaults to ignored local prod-style paths, but real deployments should set `SMIRKLY_CONFIG_VARS_PATH` and `SMIRKLY_SECRETS_PATH`; point them at files generated or mounted by your deployment platform, not at repository files with real secrets.
 
-The production image starts with `configs/static_config.prod.yaml`, which intentionally does not load userver testsuite endpoints. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep `MIGRATE_DATABASE_URL` and the generated production `postgres-dbconnection` pointed at the same database.
+The production image starts with `configs/static_config.prod.yaml`, which intentionally does not load userver tests-control endpoints. It does include a private monitor listener with `/ping`, `/service/monitor`, `/service/log-level/{level}`, `/service/log/dynamic-debug`, `/service/inspect-requests`, `/service/dnsclient/{command}`, and `/service/on-log-rotate/`. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep `MIGRATE_DATABASE_URL` and the generated production `postgres-dbconnection` pointed at the same database.
 
 If your local `pgdata` volume was created before the migration runner was added, it may already contain tables but not
 the `schema_migrations` version table. For local development, recreate that database volume before the first
