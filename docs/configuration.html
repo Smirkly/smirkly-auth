@@ -37,9 +37,11 @@
 
           <h2>Configuration Model</h2>
           <p>
-            The service has two configuration layers: static userver component configuration and runtime
-            variables. Static configuration defines which components and handlers exist. Runtime variables
-            provide environment-specific values such as ports, database URLs, JWT keys, and SMTP credentials.
+            The service has three configuration layers: static userver component configuration, startup/runtime
+            variables, and userver dynamic config. Static configuration defines which components,
+            task processors, listeners, handlers, and config-service clients exist. Runtime variables provide environment-specific values
+            such as ports, database URLs, JWT keys, SMTP credentials, and config-service endpoints. Dynamic config controls runtime policy
+            such as auth limits and outbox retry behavior.
           </p>
           <div class="table-wrap">
             <table>
@@ -102,6 +104,44 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
             and restarting the service instances.
           </p>
 
+
+          <h2>Dynamic Config</h2>
+          <p>
+            Runtime policy is stored in typed userver dynamic configs so the code reads snapshots instead of
+            scattered hard-coded values. Local development and Docker run from the C++ defaults defined in
+            <code>dynamic_config::Key</code>. Production connects <code>dynamic-config-client</code> and
+            <code>dynamic-config-client-updater</code> to config-service and keeps a filesystem cache for restart fallback.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Controls</th>
+                  <th>Change model</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>SMIRKLY_AUTH_RUNTIME_CONFIG</code></td>
+                  <td>Verified-email sign-in requirement, session activity write threshold, verification code TTL, and verification attempt limits.</td>
+                  <td>Safe runtime policy; validate values before rollout.</td>
+                </tr>
+                <tr>
+                  <td><code>SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG</code></td>
+                  <td>Outbox processing kill switch, batch size, max attempts, stuck timeout, and retry backoff.</td>
+                  <td>Safe for incidents, for example disabling delivery or lowering batch size.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Do not put secrets, DSNs, JWT private keys, SMTP credentials, listener ports, config-service endpoints, or task processor thread
+            counts into the auth/outbox dynamic config keys. Those values shape the process or contain secret material and require deploy-time
+            configuration plus rolling restart. In production, <code>dynamic-config-updates-enabled</code> should be true,
+            <code>dynamic-config-cache-path</code> should be writable and persistent, and config updates should be monitored through userver metrics.
+          </p>
+
           <h2>Runtime Variables</h2>
           <div class="table-wrap">
             <table>
@@ -113,6 +153,12 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
                 </tr>
               </thead>
               <tbody>
+
+                <tr>
+                  <td><code>event-threads</code></td>
+                  <td>Yes</td>
+                  <td>Userver event loop threads. Startup config; change with a rolling restart.</td>
+                </tr>
                 <tr>
                   <td><code>worker-threads</code></td>
                   <td>Yes</td>
@@ -122,6 +168,11 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
                   <td><code>worker-fs-threads</code></td>
                   <td>Yes</td>
                   <td>Filesystem/blocking utility processor size.</td>
+                </tr>
+                <tr>
+                  <td><code>worker-monitor-threads</code></td>
+                  <td>Yes</td>
+                  <td>Dedicated processor for monitor/admin handlers.</td>
                 </tr>
                 <tr>
                   <td><code>worker-email-outbox-threads</code></td>
@@ -142,6 +193,11 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
                   <td><code>server-port</code></td>
                   <td>Yes</td>
                   <td>HTTP listen port inside the container.</td>
+                </tr>
+                <tr>
+                  <td><code>monitor-server-port</code></td>
+                  <td>Yes</td>
+                  <td>Private monitor listener port for <code>/ping</code> and <code>/service/*</code>. Restrict at network level.</td>
                 </tr>
                 <tr>
                   <td><code>postgres-dbconnection</code></td>

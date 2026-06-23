@@ -24,7 +24,7 @@ namespace {
 }
 
 namespace smirkly::auth::services::validation {
-    SignUpValidator::SignUpValidator(SignUpPolicy policy) : policy_(std::move(policy)) {
+    SignUpValidator::SignUpValidator(policies::SignUpPolicy policy) : policy_(std::move(policy)) {
     }
 
     void SignUpValidator::ValidatePassword(std::string_view password) const {

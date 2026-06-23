@@ -1,5 +1,8 @@
 #include <algorithm>
+#include <cstddef>
 #include <exception>
+#include <string>
+#include <vector>
 
 #include <userver/formats/json.hpp>
 #include <userver/logging/log.hpp>
@@ -16,12 +19,14 @@ namespace smirkly::auth::infra::workers {
                                                services::ports::EmailOutboxRepository &outbox_repo,
                                                services::ports::EmailVerificationSender &sender,
                                                userver::engine::TaskProcessor &task_processor,
-                                               EmailOutboxProcessorConfig cfg)
+                                               EmailOutboxWorkerStaticConfig static_config,
+                                               const EmailOutboxRuntimeConfigProvider &runtime_config_provider)
         : tx_manager_(tx_manager)
           , outbox_repo_(outbox_repo)
           , sender_(sender)
           , task_processor_(task_processor)
-          , cfg_(cfg) {
+          , static_config_(static_config)
+          , runtime_config_provider_(runtime_config_provider) {
     }
 
     EmailOutboxProcessor::~EmailOutboxProcessor() {
@@ -29,10 +34,10 @@ namespace smirkly::auth::infra::workers {
     }
 
     void EmailOutboxProcessor::Start() {
-        if (started_ || !cfg_.enabled) return;
+        if (started_ || !static_config_.enabled) return;
 
         auto settings = userver::utils::PeriodicTask::Settings{
-            std::chrono::duration_cast<std::chrono::milliseconds>(cfg_.poll_interval)
+            std::chrono::duration_cast<std::chrono::milliseconds>(static_config_.poll_interval)
         };
         settings.task_processor = &task_processor_;
         task_.Start("email-outbox-processor", settings, [this] { Tick(); });
@@ -48,14 +53,21 @@ namespace smirkly::auth::infra::workers {
         started_ = false;
     }
 
-    std::chrono::seconds EmailOutboxProcessor::ComputeRetryDelay(std::size_t attempt) const {
+    std::chrono::seconds EmailOutboxProcessor::ComputeRetryDelay(
+        std::size_t attempt,
+        const EmailOutboxRuntimeConfig &cfg) const {
         const auto exponent = attempt == 0 ? 0 : attempt - 1;
         const auto pow2 = (exponent >= 30) ? (1ULL << 30) : (1ULL << exponent);
-        const auto delay = std::chrono::seconds(cfg_.retry_base_delay.count() * static_cast<long long>(pow2));
-        return std::min(delay, cfg_.retry_max_delay);
+        const auto delay = std::chrono::seconds(cfg.retry_base_delay.count() * static_cast<long long>(pow2));
+        return std::min(delay, cfg.retry_max_delay);
     }
 
     void EmailOutboxProcessor::Tick() {
+        const auto cfg = runtime_config_provider_.Get();
+        if (!cfg.processing_enabled) {
+            return;
+        }
+
         const auto now = std::chrono::system_clock::now();
 
         std::vector<services::ports::EmailOutboxEntry> batch;
@@ -63,10 +75,10 @@ namespace smirkly::auth::infra::workers {
             auto tx = tx_manager_.Begin("email_outbox.claim");
             batch = outbox_repo_.ClaimBatch(
                 *tx,
-                cfg_.batch_size,
+                cfg.batch_size,
                 now,
-                cfg_.stuck_timeout,
-                cfg_.max_attempts
+                cfg.stuck_timeout,
+                cfg.max_attempts
             );
             tx->Commit();
         } catch (const std::exception &e) {
@@ -100,10 +112,10 @@ namespace smirkly::auth::infra::workers {
                 try {
                     auto tx = tx_manager_.Begin("email_outbox.reschedule");
 
-                    if (attempt >= cfg_.max_attempts) {
+                    if (attempt >= cfg.max_attempts) {
                         outbox_repo_.MarkDead(*tx, job.id, now, std::string{e.what()});
                     } else {
-                        const auto delay = ComputeRetryDelay(attempt);
+                        const auto delay = ComputeRetryDelay(attempt, cfg);
                         const auto next_at = now + delay;
                         outbox_repo_.Reschedule(*tx, job.id, next_at, std::string{e.what()});
                     }

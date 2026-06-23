@@ -16,7 +16,9 @@
       "binaryDir": "${sourceDir}/build-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "USERVER_SANITIZE": "addr;ub"
+        "USERVER_SANITIZE": "addr;ub",
+        "SMIRKLY_AUTH_ENABLE_TESTSUITE": "ON",
+        "SMIRKLY_AUTH_ENABLE_TEST_CONTROL": "ON"
       }
     },
     {
@@ -28,7 +30,9 @@
       ],
       "binaryDir": "${sourceDir}/build-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "SMIRKLY_AUTH_ENABLE_TESTSUITE": "OFF",
+        "SMIRKLY_AUTH_ENABLE_TEST_CONTROL": "OFF"
       }
     },
     {

@@ -63,7 +63,7 @@
                   <td>Production Docker profile</td>
                   <td><code>configs/static_config.prod.yaml</code></td>
                   <td>External <code>SMIRKLY_CONFIG_VARS_PATH</code> and <code>SMIRKLY_SECRETS_PATH</code></td>
-                  <td>Release image without source mount or testsuite endpoints.</td>
+                  <td>Release image without source mount or tests-control endpoints; dynamic config updater/cache enabled.</td>
                 </tr>
               </tbody>
             </table>
@@ -72,9 +72,10 @@
           <h2>Build and Release Gate</h2>
           <p>
             A release candidate should build the service, compile SQL query headers, run unit tests, run the functional
-            testsuite, and validate the OpenAPI YAML before deployment.
+            testsuite as a non-root user, and validate the OpenAPI YAML before deployment.
           </p>
           <pre><code>cmake --build cmake-build-debug -j$(nproc) --target smirkly-auth smirkly-auth_unittest
+# Run from a non-root user; testsuite PostgreSQL initdb refuses root.
 ctest --test-dir cmake-build-debug --output-on-failure
 ruby -e "require 'yaml'; YAML.load_file('openapi/auth-v0.yaml')"</code></pre>
           <p>
@@ -99,9 +100,11 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
           <ul>
             <li>Use the release image and <code>configs/static_config.prod.yaml</code>.</li>
             <li>Mount JWT keys and generated runtime config at deploy time through <code>SMIRKLY_SECRETS_PATH</code> and <code>SMIRKLY_CONFIG_VARS_PATH</code>.</li>
-            <li>Keep testsuite, tests-control, and fake-mode endpoints out of the production static config.</li>
+            <li>Build release images with <code>SMIRKLY_AUTH_ENABLE_TEST_CONTROL=OFF</code>; keep tests-control and fake-mode endpoints out of production.</li>
             <li>Expose the service only through TLS-terminating ingress or a private service mesh.</li>
             <li>Set resource limits so userver congestion control reflects real CPU constraints.</li>
+            <li>Keep the monitor listener private; route <code>/ping</code> and <code>/service/monitor</code> only through internal health/metrics infrastructure.</li>
+            <li>Roll out auth/outbox policy through config-service dynamic config, backed by <code>dynamic-config.fs-cache-path</code>; roll out secrets and thread-count changes through deploy config plus restart.</li>
           </ul>
 
           <h2>Rollout Sequence</h2>

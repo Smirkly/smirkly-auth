@@ -132,7 +132,10 @@ LIMIT 10;</code></pre>
             <li>Keep JWT private keys, SMTP credentials, and database passwords in a secret store.</li>
             <li>Mount or generate <code>configs/config_vars.yaml</code> at deploy time; do not bake real secrets into the image.</li>
             <li>Run the <code>smirkly-migrate</code> job before starting new auth service containers.</li>
-            <li>Run production containers with <code>configs/static_config.prod.yaml</code>; keep testsuite handlers only in local and test configs.</li>
+            <li>Run production containers with <code>configs/static_config.prod.yaml</code> and release binaries built with <code>SMIRKLY_AUTH_ENABLE_TEST_CONTROL=OFF</code>.</li>
+            <li>Expose the monitor listener only on a private network. Use <code>/ping</code> for health and <code>/service/monitor</code> for metrics.</li>
+            <li>Use config-service keys <code>SMIRKLY_AUTH_RUNTIME_CONFIG</code> and <code>SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG</code> for auth/outbox policy; do not put secrets, DSNs, ports, or thread counts there.</li>
+            <li>Monitor dynamic config updater health and keep the cache path writable so restarts can fall back to the last successful snapshot.</li>
             <li>Set <code>CPU_LIMIT</code> in production deployments so congestion-control can enforce real limits.</li>
             <li>Configure reverse proxy request-size limits and rate limits for auth endpoints.</li>
             <li>Set <code>auth-http.trusted-proxy-cidrs</code> to the exact ingress/load balancer CIDR ranges before trusting forwarded client IP headers.</li>
@@ -179,6 +182,7 @@ LIMIT 10;</code></pre>
 
           <h2>Release Gate</h2>
           <pre><code>cmake --build cmake-build-debug -j$(nproc) --target smirkly-auth smirkly-auth_unittest
+# Run from a non-root user; testsuite PostgreSQL initdb refuses root.
 ctest --test-dir cmake-build-debug --output-on-failure
 ruby -e "require 'yaml'; YAML.load_file('openapi/auth-v0.yaml')"</code></pre>
         </div>
