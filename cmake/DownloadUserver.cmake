@@ -20,7 +20,7 @@ function(download_userver)
     include(get_cpm)
 
     if(NOT DEFINED ARG_VERSION AND NOT DEFINED ARG_GIT_TAG)
-        set(ARG_GIT_TAG develop)
+        set(ARG_GIT_TAG v3.0)
     endif()
 
     if(NOT DEFINED CPM_USE_NAMED_CACHE_DIRECTORIES)

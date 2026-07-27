@@ -1,4 +1,24 @@
 services:
+  smirkly-postgres:
+    image: postgres:16
+    container_name: smirkly-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smirkly_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-smirkly_auth}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smirkly_auth}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   smirkly-migrate-devcontainer:
     image: ${SMIRKLY_MIGRATE_DEV_IMAGE:-migrate/migrate:v4.19.1}
     depends_on:
@@ -12,27 +32,33 @@ services:
       - up
 
   smirkly-auth-workspace:
-    platform: ${SMIRKLY_DOCKER_PLATFORM:-linux/amd64}
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: .devcontainer/Dockerfile
       target: dev
       args:
-        USERVER_IMAGE: ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-24.04-userver:latest}
-        MIGRATE_IMAGE: ${MIGRATE_IMAGE:-migrate/migrate:v4.19.1}
+        DEV_BASE_IMAGE: ${DEV_BASE_IMAGE:-ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90}
     image: ${SMIRKLY_AUTH_DEV_IMAGE:-smirkly-auth:dev}
     container_name: smirkly-auth-workspace
+    user: developer
     depends_on:
       smirkly-migrate-devcontainer:
         condition: service_completed_successfully
     working_dir: /workspace
     environment:
       CCACHE_DIR: /workspace/.ccache
+      CPM_SOURCE_CACHE: /workspace/.ccache/cpm
+      HOME: /home/developer
       SHELL: /bin/bash
       USERVER_ENABLE_STACK_USAGE_MONITOR: "0"
+      XDG_CACHE_HOME: /.jbdevcontainer
+      XDG_CONFIG_HOME: /.jbdevcontainer/config
+      XDG_DATA_HOME: /.jbdevcontainer/data
+      XDG_RUNTIME_DIR: /.jbdevcontainer/runtime
     volumes:
       - .:/workspace
       - auth-build-debug:/workspace/build-debug
+      - auth-build-release:/workspace/build-release
       - auth-ccache:/workspace/.ccache
       - ./configs/config_vars.docker.yaml:/workspace/configs/config_vars.yaml:ro
     command: sleep infinity
@@ -41,3 +67,9 @@ services:
       - SYS_PTRACE
     security_opt:
       - seccomp=unconfined
+
+volumes:
+  pgdata:
+  auth-build-debug:
+  auth-build-release:
+  auth-ccache:
