@@ -21,6 +21,7 @@ AUTH_JWT_AUDIENCE: smirkly-api
 AUTH_JWT_KEY_ID: smirkly-auth-docker-rs256
 AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
 AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
+AUTH_REFRESH_TOKEN_PEPPER: local-dev-refresh-token-pepper-change-me
 
 AUTH_SMTP_HOST: smtp.localhost
 AUTH_SMTP_PORT: 587

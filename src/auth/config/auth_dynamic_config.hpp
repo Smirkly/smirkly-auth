@@ -9,9 +9,8 @@
 
 namespace smirkly::auth::services::policies {
 
-AuthRuntimePolicies Parse(
-    const userver::formats::json::Value& value,
-    userver::formats::parse::To<AuthRuntimePolicies>);
+AuthRuntimePolicies Parse(const userver::formats::json::Value& value,
+                          userver::formats::parse::To<AuthRuntimePolicies>);
 
 }  // namespace smirkly::auth::services::policies
 
@@ -28,8 +27,7 @@ namespace smirkly::auth::config {
 using AuthRuntimeConfig = services::policies::AuthRuntimePolicies;
 using EmailOutboxRuntimeConfig = infra::workers::EmailOutboxRuntimeConfig;
 
-extern const userver::dynamic_config::Key<AuthRuntimeConfig>
-    kAuthRuntimeConfig;
+extern const userver::dynamic_config::Key<AuthRuntimeConfig> kAuthRuntimeConfig;
 
 extern const userver::dynamic_config::Key<EmailOutboxRuntimeConfig>
     kEmailOutboxRuntimeConfig;

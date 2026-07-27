@@ -5,66 +5,59 @@
 #include <userver/server/handlers/exceptions.hpp>
 #include <userver/server/http/http_response_cookie.hpp>
 
+#include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
 #include <auth/components/auth_http_component.hpp>
 #include <auth/components/auth_service_component.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
-#include <auth/services/errors/refresh_errors.hpp>
-
 
 namespace smirkly::auth::api::v0::handlers {
-    RefreshHandler::RefreshHandler(
-        const userver::components::ComponentConfig &config,
-        const userver::components::ComponentContext &context
-    )
-        : HttpHandlerJsonBase(config, context),
-          auth_service_(
-              context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetAuthService()
-          ),
-          request_meta_extractor_(
-              context.FindComponent<smirkly::auth::components::AuthHttpComponent>().GetRequestMetaExtractor()
-          ) {
+RefreshHandler::RefreshHandler(
+    const userver::components::ComponentConfig& config,
+    const userver::components::ComponentContext& context)
+    : HttpHandlerJsonBase(config, context),
+      auth_service_(
+          context
+              .FindComponent<smirkly::auth::components::AuthServiceComponent>()
+              .GetAuthService()),
+      request_meta_extractor_(
+          context.FindComponent<smirkly::auth::components::AuthHttpComponent>()
+              .GetRequestMetaExtractor()) {}
+
+RefreshHandler::Value RefreshHandler::HandleRequestJsonThrow(
+    const HttpRequest& request, const Value&, RequestContext&) const {
+  try {
+    const auto refresh_token = request.GetCookie("refresh_token");
+    if (refresh_token.empty()) {
+      request.GetHttpResponse().SetStatus(
+          userver::server::http::HttpStatus::kUnauthorized);
+      return utils::ErrorResponse("auth.invalid_refresh_token",
+                                  "invalid refresh token");
     }
 
+    const auto meta = request_meta_extractor_.Extract(request);
 
-    RefreshHandler::Value RefreshHandler::HandleRequestJsonThrow(
-        const HttpRequest &request,
-        const Value &,
-        RequestContext &
-    ) const {
-        try {
-            const auto refresh_token = request.GetCookie("refresh_token");
-            if (refresh_token.empty()) {
-                request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-                return utils::ErrorResponse("auth.invalid_refresh_token", "invalid refresh token");
-            }
+    const services::contracts::RefreshCommand cmd = {
+        .refresh_token = std::string{refresh_token}};
 
-            const auto meta = request_meta_extractor_.Extract(request);
+    const auto result = auth_service_.Refresh(cmd, meta);
 
-            const services::contracts::RefreshCommand cmd = {
-                .refresh_token = std::string{refresh_token}
-            };
+    request.GetHttpResponse().SetCookie(
+        userver::server::http::Cookie("refresh_token", result.refresh_token)
+            .SetHttpOnly()
+            .SetSecure()
+            .SetPath("/auth/v0/refresh")
+            .SetSameSite("Strict")
+            .SetMaxAge(result.refresh_token_max_age));
 
-            const auto result = auth_service_.Refresh(cmd, meta);
+    userver::formats::json::ValueBuilder response;
+    response["tokens"]["access_token"] = result.access_token;
+    response["session_id"] = result.session_id;
 
-            request.GetHttpResponse().SetCookie(
-                userver::server::http::Cookie("refresh_token", result.refresh_token)
-                    .SetHttpOnly()
-                    .SetSecure()
-                    .SetPath("/auth/v0/refresh")
-                    .SetSameSite("Strict")
-                    .SetMaxAge(result.refresh_token_max_age)
-            );
-
-            userver::formats::json::ValueBuilder response;
-            response["tokens"]["access_token"] = result.access_token;
-            response["session_id"] = result.session_id;
-
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
-            return response.ExtractValue();
-        } catch (const services::errors::RefreshError &) {
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return utils::ErrorResponse("auth.invalid_refresh_token", "invalid refresh token");
-        }
-    }
+    request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
+    return response.ExtractValue();
+  } catch (const std::exception& e) {
+    return utils::AuthErrorResponse(request, e);
+  }
 }
+}  // namespace smirkly::auth::api::v0::handlers

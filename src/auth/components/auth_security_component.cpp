@@ -10,7 +10,10 @@
 #include <auth/infra/ids/uuid_generator.hpp>
 #include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
 #include <auth/infra/security/password/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/token/hmac_sha256_token_hasher.hpp>
+#include <auth/infra/security/token/random_token_generator.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
+#include <auth/services/policies/verification_code_policy.hpp>
 
 namespace smirkly::auth::components {
 
@@ -18,14 +21,18 @@ struct AuthSecurityComponent::Impl {
   config::AuthSecuritySettings settings;
   infra::security::jwt::JwtCppTokenProvider token_provider;
   infra::security::BcryptPasswordHasher password_hasher;
+  infra::security::HmacSha256TokenHasher refresh_token_hasher;
   infra::security::RandomVerificationCodeGenerator code_generator;
+  infra::security::RandomTokenGenerator password_reset_token_generator;
   infra::ids::UuidGenerator uuid_generator;
 
   explicit Impl(const userver::components::ComponentConfig& cfg)
       : settings(config::ParseAuthSecuritySettings(cfg)),
         token_provider(config::LoadJwtConfig(settings.jwt)),
         password_hasher(),
-        code_generator(settings.verification_code_length),
+        refresh_token_hasher(settings.refresh_token_pepper),
+        code_generator(services::policies::kVerificationCodeLength),
+        password_reset_token_generator(settings.password_reset_token_bytes),
         uuid_generator() {}
 };
 
@@ -46,11 +53,14 @@ type: object
 description: Auth security providers config
 additionalProperties: false
 properties:
-  verification_code_length:
+  refresh-token-pepper:
+    type: string
+    description: Secret pepper used to HMAC refresh/reset tokens before storing them
+  password_reset_token_bytes:
     type: integer
-    description: Verification code length
-    minimum: 1
-    default: 6
+    description: Random byte length for generated password reset tokens
+    minimum: 16
+    default: 32
   jwt:
     type: object
     description: JWT settings
@@ -98,6 +108,26 @@ AuthSecurityComponent::GetPasswordHasher() noexcept {
 const services::ports::PasswordHasher&
 AuthSecurityComponent::GetPasswordHasher() const noexcept {
   return impl_->password_hasher;
+}
+
+services::ports::security::TokenHasher&
+AuthSecurityComponent::GetRefreshTokenHasher() noexcept {
+  return impl_->refresh_token_hasher;
+}
+
+const services::ports::security::TokenHasher&
+AuthSecurityComponent::GetRefreshTokenHasher() const noexcept {
+  return impl_->refresh_token_hasher;
+}
+
+services::ports::security::TokenGenerator&
+AuthSecurityComponent::GetPasswordResetTokenGenerator() noexcept {
+  return impl_->password_reset_token_generator;
+}
+
+const services::ports::security::TokenGenerator&
+AuthSecurityComponent::GetPasswordResetTokenGenerator() const noexcept {
+  return impl_->password_reset_token_generator;
 }
 
 services::ports::VerificationCodeGenerator&

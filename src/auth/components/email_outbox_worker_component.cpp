@@ -17,82 +17,80 @@
 #include <auth/infra/workers/email_outbox_processor.hpp>
 
 namespace smirkly::auth::components {
-    struct EmailOutboxWorkerComponent::Impl {
-        AuthInfraComponent &infra;
-        config::EmailOutboxWorkerConfig worker_config;
-        config::DynamicConfigEmailOutboxRuntimeConfigProvider runtime_config_provider;
+struct EmailOutboxWorkerComponent::Impl {
+  AuthInfraComponent& infra;
+  config::EmailOutboxWorkerConfig worker_config;
+  config::DynamicConfigEmailOutboxRuntimeConfigProvider runtime_config_provider;
 
-        std::unique_ptr<infra::providers::email::SmtpEmailVerificationSender> smtp_verification_sender;
-        std::unique_ptr<infra::providers::email::LogEmailVerificationSender> verification_sender;
-        std::unique_ptr<infra::workers::EmailOutboxProcessor> processor;
+  std::unique_ptr<infra::providers::email::SmtpEmailVerificationSender>
+      smtp_verification_sender;
+  std::unique_ptr<infra::providers::email::LogEmailVerificationSender>
+      verification_sender;
+  std::unique_ptr<infra::workers::EmailOutboxProcessor> processor;
 
-        Impl(const userver::components::ComponentConfig &cfg,
-             const userver::components::ComponentContext &ctx)
-            : infra(ctx.FindComponent<AuthInfraComponent>(AuthInfraComponent::kName))
-              , worker_config(config::ParseEmailOutboxWorkerConfig(cfg))
-              , runtime_config_provider(
-                    ctx.FindComponent<userver::components::DynamicConfig>().GetSource()) {
-            if (!worker_config.enabled) {
-                LOG_INFO() << "EmailOutboxWorkerComponent disabled by config";
-                return;
-            }
-
-            auto &tp = ctx.GetTaskProcessor(worker_config.task_processor_name);
-
-            smtp_verification_sender = std::make_unique<infra::providers::email::SmtpEmailVerificationSender>(
-                std::make_unique<infra::messaging::SmtpEmailSender>(
-                    worker_config.smtp,
-                    worker_config.from_email,
-                    worker_config.from_name)
-            );
-
-            verification_sender = std::make_unique<infra::providers::email::LogEmailVerificationSender>(
-                *smtp_verification_sender
-            );
-
-            processor = std::make_unique<infra::workers::EmailOutboxProcessor>(
-                infra.GetTransactionManager(),
-                infra.GetEmailOutboxRepository(),
-                *verification_sender,
-                tp,
-                worker_config.worker,
-                runtime_config_provider
-            );
-        }
-    };
-
-    EmailOutboxWorkerComponent::EmailOutboxWorkerComponent(
-        const userver::components::ComponentConfig &cfg,
-        const userver::components::ComponentContext &ctx)
-        : userver::components::LoggableComponentBase(cfg, ctx)
-          , impl_(std::make_unique<Impl>(cfg, ctx)) {
+  Impl(const userver::components::ComponentConfig& cfg,
+       const userver::components::ComponentContext& ctx)
+      : infra(ctx.FindComponent<AuthInfraComponent>(AuthInfraComponent::kName)),
+        worker_config(config::ParseEmailOutboxWorkerConfig(cfg)),
+        runtime_config_provider(
+            ctx.FindComponent<userver::components::DynamicConfig>()
+                .GetSource()) {
+    if (!worker_config.enabled) {
+      LOG_INFO() << "EmailOutboxWorkerComponent disabled by config";
+      return;
     }
 
-    EmailOutboxWorkerComponent::~EmailOutboxWorkerComponent() {
-        if (impl_ && impl_->processor) {
-            impl_->processor->Stop();
-        }
-    }
+    auto& tp = ctx.GetTaskProcessor(worker_config.task_processor_name);
 
-    void EmailOutboxWorkerComponent::OnAllComponentsLoaded() {
-        if (impl_ && impl_->processor) {
-            impl_->processor->Start();
-            LOG_INFO() << "EmailOutboxWorkerComponent started";
-        }
-    }
+    smtp_verification_sender =
+        std::make_unique<infra::providers::email::SmtpEmailVerificationSender>(
+            std::make_unique<infra::messaging::SmtpEmailSender>(
+                worker_config.smtp, worker_config.from_email,
+                worker_config.from_name));
 
-    void EmailOutboxWorkerComponent::OnAllComponentsAreStopping() {
-        if (impl_ && impl_->processor) {
-            impl_->processor->Stop();
-            LOG_INFO() << "EmailOutboxWorkerComponent stopping";
-        }
-    }
+    verification_sender =
+        std::make_unique<infra::providers::email::LogEmailVerificationSender>(
+            *smtp_verification_sender);
 
-    userver::yaml_config::Schema EmailOutboxWorkerComponent::GetStaticConfigSchema() {
-        using userver::yaml_config::MergeSchemas;
-        using userver::components::LoggableComponentBase;
+    processor = std::make_unique<infra::workers::EmailOutboxProcessor>(
+        infra.GetTransactionManager(), infra.GetEmailOutboxRepository(),
+        *verification_sender, tp, worker_config.worker,
+        runtime_config_provider);
+  }
+};
 
-        return MergeSchemas<LoggableComponentBase>(R"(
+EmailOutboxWorkerComponent::EmailOutboxWorkerComponent(
+    const userver::components::ComponentConfig& cfg,
+    const userver::components::ComponentContext& ctx)
+    : userver::components::LoggableComponentBase(cfg, ctx),
+      impl_(std::make_unique<Impl>(cfg, ctx)) {}
+
+EmailOutboxWorkerComponent::~EmailOutboxWorkerComponent() {
+  if (impl_ && impl_->processor) {
+    impl_->processor->Stop();
+  }
+}
+
+void EmailOutboxWorkerComponent::OnAllComponentsLoaded() {
+  if (impl_ && impl_->processor) {
+    impl_->processor->Start();
+    LOG_INFO() << "EmailOutboxWorkerComponent started";
+  }
+}
+
+void EmailOutboxWorkerComponent::OnAllComponentsAreStopping() {
+  if (impl_ && impl_->processor) {
+    impl_->processor->Stop();
+    LOG_INFO() << "EmailOutboxWorkerComponent stopping";
+  }
+}
+
+userver::yaml_config::Schema
+EmailOutboxWorkerComponent::GetStaticConfigSchema() {
+  using userver::components::LoggableComponentBase;
+  using userver::yaml_config::MergeSchemas;
+
+  return MergeSchemas<LoggableComponentBase>(R"(
 type: object
 description: Email outbox worker component
 additionalProperties: false
@@ -151,5 +149,5 @@ properties:
         description: Total request timeout in milliseconds
         default: 30000
 )");
-    }
 }
+}  // namespace smirkly::auth::components

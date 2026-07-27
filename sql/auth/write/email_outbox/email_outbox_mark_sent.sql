@@ -3,6 +3,10 @@ SET
     status       = 'sent',
     payload      = '{}'::jsonb,
     locked_until = NULL,
-    last_error   = $2,
-    updated_at   = $3
-WHERE id = $1::uuid;
+    lease_id     = NULL,
+    last_error   = $3,
+    updated_at   = $4
+WHERE id = $1::uuid
+  AND lease_id = $2::uuid
+  AND status = 'processing'
+RETURNING id::text AS id;

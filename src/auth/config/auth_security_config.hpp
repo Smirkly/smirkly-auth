@@ -22,7 +22,8 @@ struct JwtSettings {
 
 struct AuthSecuritySettings {
   JwtSettings jwt;
-  std::size_t verification_code_length{6};
+  std::size_t password_reset_token_bytes{32};
+  std::string refresh_token_pepper;
 };
 
 AuthSecuritySettings ParseAuthSecuritySettings(

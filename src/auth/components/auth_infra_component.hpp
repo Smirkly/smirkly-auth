@@ -7,58 +7,72 @@
 #include <userver/yaml_config/schema.hpp>
 
 namespace smirkly::auth::services::ports {
-    class EmailOutboxRepository;
-    class EmailVerificationRepository;
-    class UserRepository;
-    class TransactionManager;
-    class DeviceRepository;
-    class SessionRepository;
-}
+class EmailOutboxRepository;
+class EmailVerificationRepository;
+class PasswordResetRepository;
+class SignInAttemptRepository;
+class UserRepository;
+class TransactionManager;
+class DeviceRepository;
+class SessionRepository;
+}  // namespace smirkly::auth::services::ports
 
 namespace smirkly::auth::components {
-    class AuthInfraComponent final : public userver::components::LoggableComponentBase {
-    public:
-        static constexpr std::string_view kName = "auth-infra";
+class AuthInfraComponent final
+    : public userver::components::LoggableComponentBase {
+ public:
+  static constexpr std::string_view kName = "auth-infra";
 
-        AuthInfraComponent(const userver::components::ComponentConfig &cfg,
-                           const userver::components::ComponentContext &ctx);
+  AuthInfraComponent(const userver::components::ComponentConfig& cfg,
+                     const userver::components::ComponentContext& ctx);
 
-        ~AuthInfraComponent() override;
+  ~AuthInfraComponent() override;
 
-        static userver::yaml_config::Schema GetStaticConfigSchema();
+  static userver::yaml_config::Schema GetStaticConfigSchema();
 
+  services::ports::UserRepository& GetUserRepository() noexcept;
 
-        services::ports::UserRepository &GetUserRepository() noexcept;
+  const services::ports::UserRepository& GetUserRepository() const noexcept;
 
-        const services::ports::UserRepository &GetUserRepository() const noexcept;
+  services::ports::EmailOutboxRepository& GetEmailOutboxRepository() noexcept;
 
+  const services::ports::EmailOutboxRepository& GetEmailOutboxRepository()
+      const noexcept;
 
-        services::ports::EmailOutboxRepository &GetEmailOutboxRepository() noexcept;
+  services::ports::EmailVerificationRepository&
+  GetEmailVerificationRepository() noexcept;
 
-        const services::ports::EmailOutboxRepository &GetEmailOutboxRepository() const noexcept;
+  const services::ports::EmailVerificationRepository&
+  GetEmailVerificationRepository() const noexcept;
 
+  services::ports::SignInAttemptRepository&
+  GetSignInAttemptRepository() noexcept;
 
-        services::ports::EmailVerificationRepository &GetEmailVerificationRepository() noexcept;
+  const services::ports::SignInAttemptRepository& GetSignInAttemptRepository()
+      const noexcept;
 
-        const services::ports::EmailVerificationRepository &GetEmailVerificationRepository() const noexcept;
+  services::ports::PasswordResetRepository&
+  GetPasswordResetRepository() noexcept;
 
+  const services::ports::PasswordResetRepository& GetPasswordResetRepository()
+      const noexcept;
 
-        services::ports::DeviceRepository &GetDeviceRepository() noexcept;
+  services::ports::DeviceRepository& GetDeviceRepository() noexcept;
 
-        const services::ports::DeviceRepository &GetDeviceRepository() const noexcept;
+  const services::ports::DeviceRepository& GetDeviceRepository() const noexcept;
 
+  services::ports::SessionRepository& GetSessionRepository() noexcept;
 
-        services::ports::SessionRepository &GetSessionRepository() noexcept;
+  const services::ports::SessionRepository& GetSessionRepository()
+      const noexcept;
 
-        const services::ports::SessionRepository &GetSessionRepository() const noexcept;
+  services::ports::TransactionManager& GetTransactionManager() noexcept;
 
+  const services::ports::TransactionManager& GetTransactionManager()
+      const noexcept;
 
-        services::ports::TransactionManager &GetTransactionManager() noexcept;
-
-        const services::ports::TransactionManager &GetTransactionManager() const noexcept;
-
-    private:
-        struct Impl;
-        std::unique_ptr<Impl> impl_;
-    };
-}
+ private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
+};
+}  // namespace smirkly::auth::components

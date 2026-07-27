@@ -41,8 +41,12 @@ AuthSecuritySettings ParseAuthSecuritySettings(
   const auto& jwt = cfg["jwt"];
 
   AuthSecuritySettings settings;
-  settings.verification_code_length =
-      ParseSize(cfg, "verification_code_length", 6);
+  settings.password_reset_token_bytes =
+      ParseSize(cfg, "password_reset_token_bytes", 32);
+  settings.refresh_token_pepper = cfg["refresh-token-pepper"].As<std::string>();
+  if (settings.refresh_token_pepper.empty()) {
+    throw std::runtime_error("refresh-token-pepper must not be empty");
+  }
   settings.jwt = JwtSettings{
       .private_key_path = jwt["private-key-path"].As<std::string>(),
       .public_key_path = jwt["public-key-path"].As<std::string>(),

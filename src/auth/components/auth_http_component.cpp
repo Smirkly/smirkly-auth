@@ -8,29 +8,26 @@
 #include <auth/infra/http/request_meta_extractor.hpp>
 
 namespace smirkly::auth::components {
-    struct AuthHttpComponent::Impl final {
-        infra::http::RequestMetaExtractor request_meta_extractor;
+struct AuthHttpComponent::Impl final {
+  infra::http::RequestMetaExtractor request_meta_extractor;
 
-        explicit Impl(const userver::components::ComponentConfig &cfg)
-            : request_meta_extractor(config::ParseClientIpExtractorConfig(cfg)) {
-        }
-    };
+  explicit Impl(const userver::components::ComponentConfig& cfg)
+      : request_meta_extractor(config::ParseClientIpExtractorConfig(cfg)) {}
+};
 
-    AuthHttpComponent::AuthHttpComponent(
-        const userver::components::ComponentConfig &cfg,
-        const userver::components::ComponentContext &ctx
-    )
-        : userver::components::LoggableComponentBase(cfg, ctx),
-          impl_(std::make_unique<Impl>(cfg)) {
-    }
+AuthHttpComponent::AuthHttpComponent(
+    const userver::components::ComponentConfig& cfg,
+    const userver::components::ComponentContext& ctx)
+    : userver::components::LoggableComponentBase(cfg, ctx),
+      impl_(std::make_unique<Impl>(cfg)) {}
 
-    AuthHttpComponent::~AuthHttpComponent() = default;
+AuthHttpComponent::~AuthHttpComponent() = default;
 
-    userver::yaml_config::Schema AuthHttpComponent::GetStaticConfigSchema() {
-        using userver::components::LoggableComponentBase;
-        using userver::yaml_config::MergeSchemas;
+userver::yaml_config::Schema AuthHttpComponent::GetStaticConfigSchema() {
+  using userver::components::LoggableComponentBase;
+  using userver::yaml_config::MergeSchemas;
 
-        return MergeSchemas<LoggableComponentBase>(R"(
+  return MergeSchemas<LoggableComponentBase>(R"(
 type: object
 description: Auth HTTP request metadata extraction config
 additionalProperties: false
@@ -45,13 +42,15 @@ properties:
       type: string
       description: Trusted proxy CIDR range
 )");
-    }
-
-    infra::http::RequestMetaExtractor &AuthHttpComponent::GetRequestMetaExtractor() noexcept {
-        return impl_->request_meta_extractor;
-    }
-
-    const infra::http::RequestMetaExtractor &AuthHttpComponent::GetRequestMetaExtractor() const noexcept {
-        return impl_->request_meta_extractor;
-    }
 }
+
+infra::http::RequestMetaExtractor&
+AuthHttpComponent::GetRequestMetaExtractor() noexcept {
+  return impl_->request_meta_extractor;
+}
+
+const infra::http::RequestMetaExtractor&
+AuthHttpComponent::GetRequestMetaExtractor() const noexcept {
+  return impl_->request_meta_extractor;
+}
+}  // namespace smirkly::auth::components

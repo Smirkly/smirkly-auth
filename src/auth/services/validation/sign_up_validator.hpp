@@ -11,22 +11,23 @@
 #include <auth/services/policies/sign_up_policy.hpp>
 
 namespace smirkly::auth::services::validation {
-    struct NormalizedSignUpInput final {
-        domain::value_objects::Username username;
-        std::string password;
-        std::optional<domain::value_objects::Email> email;
-        std::optional<domain::value_objects::Phone> phone;
-    };
+struct NormalizedSignUpInput final {
+  domain::value_objects::Username username;
+  std::string password;
+  std::optional<domain::value_objects::Email> email;
+  std::optional<domain::value_objects::Phone> phone;
+};
 
-    class SignUpValidator final {
-    public:
-        explicit SignUpValidator(policies::SignUpPolicy policy = {});
+class SignUpValidator final {
+ public:
+  explicit SignUpValidator(policies::SignUpPolicy policy = {});
 
-        [[nodiscard]] NormalizedSignUpInput ValidateAndNormalize(const contracts::SignUpCommand &cmd) const;
+  [[nodiscard]] NormalizedSignUpInput ValidateAndNormalize(
+      const contracts::SignUpCommand& cmd) const;
 
-        void ValidatePassword(std::string_view password) const;
+  void ValidatePassword(std::string_view password) const;
 
-    private:
-        policies::SignUpPolicy policy_;
-    };
-}
+ private:
+  policies::SignUpPolicy policy_;
+};
+}  // namespace smirkly::auth::services::validation

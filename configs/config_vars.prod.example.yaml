@@ -1,0 +1,32 @@
+event-threads: 2
+worker-threads: 4
+worker-monitor-threads: 1
+worker-fs-threads: 2
+worker-email-outbox-threads: 2
+logger-level: info
+
+is-testing: false
+
+server-port: 8080
+monitor-server-port: 8081
+dynamic-config-updates-enabled: true
+dynamic-config-cache-path: /var/cache/smirkly-auth/dynamic-config-cache.json
+dynamic-config-server-url: http://smirkly-config-service:8080/configs/values
+dynamic-config-service-name: smirkly-auth
+dynamic-config-update-interval: 5s
+dynamic-config-full-update-interval: 1m
+postgres-dbconnection: postgresql://smirkly_auth:replace-with-secret-store-value@smirkly-postgres:5432/smirkly_auth
+
+AUTH_JWT_AUDIENCE: smirkly-api
+AUTH_JWT_KEY_ID: smirkly-auth-prod-rs256
+AUTH_JWT_PRIVATE_KEY_PATH: /app/configs/secrets/auth_jwt_private.pem
+AUTH_JWT_PUBLIC_KEY_PATH: /app/configs/secrets/auth_jwt_public.pem
+AUTH_REFRESH_TOKEN_PEPPER: replace-with-secret-store-value
+
+AUTH_SMTP_HOST: smtp.example.com
+AUTH_SMTP_PORT: 465
+AUTH_SMTP_TLS_MODE: tls
+AUTH_SMTP_USERNAME: smirkly-auth@example.com
+AUTH_SMTP_APP_PASSWORD: replace-with-secret-store-value
+AUTH_SMTP_FROM_EMAIL: no-reply@example.com
+AUTH_SMTP_FROM_NAME: Smirkly
