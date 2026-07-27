@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Smirkly Auth API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Authentication API for Smirkly clients and backend services.
 
@@ -72,11 +72,7 @@ paths:
         '410':
           description: Verification code expired or was not found
         '429':
-          description: Too many verification attempts
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/v0/verify-email/resend:
     post:
@@ -96,11 +92,53 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '429':
-          description: Too many verification attempts
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/v0/password-reset/request:
+    post:
+      tags: [Auth]
+      operationId: requestPasswordReset
+      summary: Request a password reset email
+      description: Always returns the same empty response when accepted. If an account exists for the email, a one-time reset token is queued for delivery.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '204':
+          description: Password reset request accepted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/v0/password-reset/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmPasswordReset
+      summary: Confirm a password reset
+      description: Consumes the one-time reset token, updates the password, and revokes all active sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+      responses:
+        '204':
+          description: Password changed and all sessions revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '410':
+          description: Reset token expired or is no longer active
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/v0/sign-in:
     post:
@@ -133,6 +171,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/v0/refresh:
     post:
@@ -333,6 +373,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: The configured application rate limit was exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
 
   schemas:
     Error:
@@ -445,6 +491,35 @@ components:
           type: string
           format: email
           maxLength: 320
+
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+
+    PasswordResetConfirmRequest:
+      type: object
+      required: [email, token, new_password]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        new_password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
 
     ChangePasswordRequest:
       type: object

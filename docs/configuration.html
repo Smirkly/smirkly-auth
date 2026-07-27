@@ -99,7 +99,7 @@
 SMIRKLY_SECRETS_PATH=/run/secrets/smirkly-auth \
 docker compose --profile prod up --build -d smirkly-auth</code></pre>
           <p>
-            SMTP passwords, database passwords, migration database URLs, and JWT private keys must not be committed, baked into the image,
+            SMTP passwords, database passwords, migration database URLs, refresh token pepper, and JWT private keys must not be committed, baked into the image,
             or stored in tracked demo configs. Changing these values requires regenerating the mounted config or secret
             and restarting the service instances.
           </p>
@@ -124,7 +124,7 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
               <tbody>
                 <tr>
                   <td><code>SMIRKLY_AUTH_RUNTIME_CONFIG</code></td>
-                  <td>Verified-email sign-in requirement, session activity write threshold, verification code TTL, and verification attempt limits.</td>
+                  <td>Verified-email sign-in requirement, sign-in rate limits, session activity write threshold, verification code TTL, and verification attempt limits.</td>
                   <td>Safe runtime policy; validate values before rollout.</td>
                 </tr>
                 <tr>
@@ -140,6 +140,14 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
             counts into the auth/outbox dynamic config keys. Those values shape the process or contain secret material and require deploy-time
             configuration plus rolling restart. In production, <code>dynamic-config-updates-enabled</code> should be true,
             <code>dynamic-config-cache-path</code> should be writable and persistent, and config updates should be monitored through userver metrics.
+          </p>
+          <p>
+            The repository contains tracked examples for the production dynamic config handoff. Use
+            <code>configs/dynamic_config/values.example.json</code> as a seed for config-service storage. A userver-compatible
+            config-service returns the same object wrapped under <code>configs</code>, with <code>updated_at</code> metadata, as shown in
+            <code>configs/dynamic_config/config_service_response.example.json</code>. The auth process reads neither file directly in
+            production; it receives the HTTP response through <code>dynamic-config-client-updater</code>. Local development can stay on
+            C++ defaults by keeping <code>dynamic-config-updates-enabled: false</code>.
           </p>
 
           <h2>Runtime Variables</h2>
@@ -197,7 +205,7 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
                 <tr>
                   <td><code>monitor-server-port</code></td>
                   <td>Yes</td>
-                  <td>Private monitor listener port for <code>/ping</code> and <code>/service/*</code>. Restrict at network level.</td>
+                  <td>Private monitor listener port for <code>/health/live</code>, <code>/health/ready</code>, and <code>/service/*</code>. Restrict at network level.</td>
                 </tr>
                 <tr>
                   <td><code>postgres-dbconnection</code></td>
@@ -223,6 +231,11 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
                   <td><code>AUTH_JWT_PUBLIC_KEY_PATH</code></td>
                   <td>Yes</td>
                   <td>Path to the RSA public key served through JWKS.</td>
+                </tr>
+                <tr>
+                  <td><code>AUTH_REFRESH_TOKEN_PEPPER</code></td>
+                  <td>Yes</td>
+                  <td>Secret pepper for HMAC-SHA256 refresh token hashes. Rotate only through a planned session invalidation or migration.</td>
                 </tr>
               </tbody>
             </table>

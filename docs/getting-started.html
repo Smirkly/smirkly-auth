@@ -118,12 +118,12 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
           </p>
 
           <p>Equivalent direct CMake workflow:</p>
-          <pre><code>cmake -S . -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build cmake-build-debug -j$(nproc)
-ctest --test-dir cmake-build-debug --output-on-failure</code></pre>
+          <pre><code>cmake --preset debug
+cmake --build build-debug --parallel
+ctest --test-dir build-debug --output-on-failure</code></pre>
 
           <h2>Run the Service</h2>
-          <pre><code>./cmake-build-debug/smirkly-auth \
+          <pre><code>./build-debug/smirkly-auth \
   --config ./configs/static_config.yaml</code></pre>
 
           <h2>Email Verification</h2>

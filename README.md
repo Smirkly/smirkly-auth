@@ -14,12 +14,15 @@ Implemented:
 - Current-session logout and all-sessions revocation
 - Password change with all-sessions revocation
 - Email verification flow: verification code generation and enqueueing email into outbox
+- Enumeration-safe password reset with one-time tokens and all-sessions revocation
+- Shared PostgreSQL rate limits for sign-in, email verification, and password reset
+- Transactional email outbox with retry backoff, lease ownership, and dead-letter state
+- Private liveness/readiness endpoints and a non-root production image
 - Public JWKS endpoint for access-token verification
 
 Work in progress:
-- Password reset flow
-- Production deployment packaging hardening
-- Application-level rate limiting
+- Edge rate limits and deployment manifests for the target infrastructure
+- Account lifecycle features outside authentication, such as profile management
 
 
 > Status: active development. APIs, configuration, and internal structure may change without backward compatibility guarantees.
@@ -80,7 +83,7 @@ logger-level - log level (trace, debug, info, warning, error...).
 
 server-port - HTTP port for the auth service.
 
-monitor-server-port - private monitor listener for `/ping` and `/service/*` operational handlers. Do not expose it to the public internet.
+monitor-server-port - private monitor listener for `/health/live`, `/health/ready`, and `/service/*` operational handlers. Do not expose it to the public internet.
 
 dynamic-config-updates-enabled - `false` for local/docker development, `true` in production when a config service is available.
 
@@ -92,10 +95,18 @@ dynamic-config-update-interval / dynamic-config-full-update-interval - polling c
 
 Runtime auth and outbox policies are modeled as typed userver dynamic configs:
 
-- `SMIRKLY_AUTH_RUNTIME_CONFIG` controls sign-in policy, session activity write threshold, email verification code TTL, and verification rate limits.
+- `SMIRKLY_AUTH_RUNTIME_CONFIG` controls sign-in policy, sign-in rate limits, session activity write threshold, email verification code TTL, and verification rate limits.
 - `SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG` controls outbox processing kill switch, batch size, max attempts, stuck timeout, and retry backoff.
 
-Local and docker development use the C++ defaults from `dynamic_config::Key`. Production should fetch those keys from config-service through `dynamic-config-client-updater` and keep `dynamic-config.fs-cache-path` available for fallback on restart. Thread counts, ports, DSNs, SMTP credentials, and JWT key paths are startup/runtime variables, not dynamic config. Change them through deployment config and a rolling restart.
+Local and docker development use the C++ defaults from `dynamic_config::Key`. Production should fetch those keys from config-service through `dynamic-config-client-updater` and keep `dynamic-config.fs-cache-path` available for fallback on restart. Thread counts, ports, DSNs, SMTP credentials, JWT key paths, and refresh token pepper are startup/runtime variables, not dynamic config. Change them through deployment config and a rolling restart.
+
+Tracked production examples:
+
+- `configs/config_vars.prod.example.yaml` documents the shape of the generated production `config_vars.yaml`. Do not mount it as-is; render a real ignored `config_vars.yaml` from your deployment secret source.
+- `configs/dynamic_config/values.example.json` is the seed object for config-service storage. It is the same top-level shape that userver dynamic config uses internally: each direct member is one dynamic config key.
+- `configs/dynamic_config/config_service_response.example.json` shows the HTTP response shape expected from the config-service `/configs/values` endpoint: the values object is wrapped under `configs` with `updated_at` metadata.
+
+The auth service does not read `configs/dynamic_config/*.json` directly in production. `dynamic-config-client-updater` POSTs to `dynamic-config-server-url`, receives the config-service response, validates/parses it through the C++ `dynamic_config::Key` definitions, then swaps the active snapshot.
 
 `AUTH_SMTP_*` controls outbound email verification delivery. `AUTH_SMTP_TLS_MODE` should match the provider port:
 
@@ -129,9 +140,11 @@ chmod 600 configs/secrets/auth_jwt_private.pem
 The auth service signs JWTs with the private key. Other services should fetch public keys from
 `/auth/v0/.well-known/jwks.json` and use them only to verify access tokens.
 
+`AUTH_REFRESH_TOKEN_PEPPER` is a secret used to HMAC refresh tokens before storing them in Postgres. Keep it in the same secret source as database and SMTP passwords. Changing it invalidates existing refresh sessions unless you run a planned rotation/migration.
+
 ### Email verification and SMTP
 
-Sign-up stores a hashed verification code and enqueues an email job in `email_outbox` in the same database transaction. The background outbox worker claims ready jobs, sends them through SMTP, retries transient failures, and eventually marks exhausted jobs as dead.
+Sign-up stores a hashed verification code and enqueues an email job in `email_outbox` in the same database transaction. The background outbox worker claims ready jobs with an ownership lease, sends them through SMTP, retries transient failures, and eventually marks exhausted or permanent failures as dead.
 
 If a code expires or the email was not delivered, request a fresh code:
 
@@ -186,7 +199,7 @@ make test-debug
 
 ```
 
-Functional testsuite starts its own PostgreSQL via `initdb`; run it as a non-root user. A root dev container can build and run unit tests, but testsuite PostgreSQL startup will fail with `initdb: cannot be run as root`.
+Functional testsuite starts its own PostgreSQL via `initdb` and must run as a non-root user. The bundled devcontainer runs as `developer` and supports the complete test suite.
 
 
 The resulting binary will be in build-debug/ (for debug preset).
@@ -237,23 +250,23 @@ provide `MIGRATE_DATABASE_URL` from the same secret/config source that renders `
 
 ### Devcontainer
 
-The repository also has a VS Code devcontainer for onboarding and local IDE work. It is not part of production. The
-devcontainer uses the same `Dockerfile` `dev` target, starts Postgres, runs migrations, and then opens a workspace
-container that stays alive for interactive commands.
+The repository has a CLion-compatible devcontainer for onboarding and local IDE work. It is isolated from the
+production Compose stack and starts Postgres, applies migrations, and then opens a non-root workspace container.
 
-Open the repository in VS Code and run `Dev Containers: Reopen in Container`. Inside the container:
+From the CLion welcome screen, select **Remote Development**, then **Create Dev Container**, and choose
+`.devcontainer/devcontainer.json`. Use the `debug` CMake preset and run `smirkly-auth` with
+`--config ./configs/static_config.yaml` from `/workspace`.
 
-```bash
-cmake --build build-debug --parallel --target smirkly-auth
-./build-debug/smirkly-auth --config ./configs/static_config.yaml
-```
+Do not open this checkout in local and Remote Development CLion windows simultaneously: both instances share
+`.idea/workspace.xml`, which can copy host-only CMake options into the Linux workspace.
 
-The devcontainer compose overlay defaults to `linux/amd64` because the current userver base image may not provide an
-Apple Silicon build. This does not affect production compose. Override it with `SMIRKLY_DOCKER_PLATFORM` if needed.
+The development image follows the host architecture, so Apple Silicon uses a native `linux/arm64` container. CMake
+downloads the pinned userver v3.0 sources into a persistent CPM cache; subsequent builds reuse that source cache and
+ccache.
 
 Docker-specific runtime values live in ignored `configs/config_vars.docker.yaml`. `configs/config_vars.docker.example.yaml` is the tracked template that documents the full shape of the runtime config. For production, the Compose profile defaults to ignored local prod-style paths, but real deployments should set `SMIRKLY_CONFIG_VARS_PATH` and `SMIRKLY_SECRETS_PATH`; point them at files generated or mounted by your deployment platform, not at repository files with real secrets.
 
-The production image starts with `configs/static_config.prod.yaml`, which intentionally does not load userver tests-control endpoints. It does include a private monitor listener with `/ping`, `/service/monitor`, `/service/log-level/{level}`, `/service/log/dynamic-debug`, `/service/inspect-requests`, `/service/dnsclient/{command}`, and `/service/on-log-rotate/`. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep `MIGRATE_DATABASE_URL` and the generated production `postgres-dbconnection` pointed at the same database.
+The production image runs as the unprivileged `smirkly-auth` user and starts with `configs/static_config.prod.yaml`, which intentionally does not load userver tests-control endpoints. Its dynamic-config cache is mounted at `/var/cache/smirkly-auth`. It includes a private monitor listener with `/health/live`, `/health/ready`, `/service/monitor`, `/service/log-level/{level}`, `/service/log/dynamic-debug`, `/service/inspect-requests`, `/service/dnsclient/{command}`, and `/service/on-log-rotate/`. Local development and tests still use `configs/static_config.yaml`. If you override the Postgres credentials through `.env`, keep `MIGRATE_DATABASE_URL` and the generated production `postgres-dbconnection` pointed at the same database.
 
 If your local `pgdata` volume was created before the migration runner was added, it may already contain tables but not
 the `schema_migrations` version table. For local development, recreate that database volume before the first
@@ -308,10 +321,9 @@ make test-debug
 or explicitly:
 
 ```bash
-cmake -S . -B cmake-build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build cmake-build-debug -j$(nproc)
-cd cmake-build-debug
-ctest --output-on-failure
+cmake --preset debug
+cmake --build build-debug --parallel
+ctest --test-dir build-debug --output-on-failure
 ```
 
 New tests should be placed under tests/unit/… and will be picked up automatically by CMake if they match the configured
