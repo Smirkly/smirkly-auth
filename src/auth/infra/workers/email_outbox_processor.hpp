@@ -18,6 +18,10 @@ class EmailOutboxRepository;
 class EmailVerificationSender;
 }  // namespace smirkly::auth::services::ports
 
+namespace smirkly::auth::services::ports::observability {
+class EmailOutboxMetrics;
+}  // namespace smirkly::auth::services::ports::observability
+
 namespace smirkly::auth::infra::workers {
 struct EmailOutboxWorkerStaticConfig final {
   bool enabled{true};
@@ -32,7 +36,8 @@ class EmailOutboxProcessor final {
       services::ports::EmailVerificationSender& sender,
       userver::engine::TaskProcessor& task_processor,
       EmailOutboxWorkerStaticConfig static_config,
-      const EmailOutboxRuntimeConfigProvider& runtime_config_provider);
+      const EmailOutboxRuntimeConfigProvider& runtime_config_provider,
+      services::ports::observability::EmailOutboxMetrics& metrics);
 
   ~EmailOutboxProcessor();
 
@@ -55,6 +60,7 @@ class EmailOutboxProcessor final {
 
   EmailOutboxWorkerStaticConfig static_config_;
   const EmailOutboxRuntimeConfigProvider& runtime_config_provider_;
+  services::ports::observability::EmailOutboxMetrics& metrics_;
   userver::utils::PeriodicTask task_;
   bool started_{false};
 };

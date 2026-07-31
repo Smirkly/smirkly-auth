@@ -130,6 +130,22 @@ LIMIT 10;</code></pre>
             dead-letter state. Treat a growing backlog as user-facing because new users cannot complete verification.
           </p>
 
+          <h2>Metrics and Alerts</h2>
+          <p>
+            Prometheus-compatible metrics are available from <code>/service/monitor</code> on the private monitor
+            listener. userver supplies HTTP, task processor, PostgreSQL, and logging metrics. The service
+            adds bounded email outbox metrics without user identifiers or other high-cardinality labels.
+          </p>
+          <ul>
+            <li><code>auth.email-outbox.deliveries.total</code> uses the fixed <code>result</code> values <code>sent</code>, <code>retry_scheduled</code>, <code>dead</code>, and <code>lease_lost</code>.</li>
+            <li><code>auth.email-outbox.errors.total</code> uses the fixed <code>stage</code> values <code>claim</code> and <code>persist</code>.</li>
+            <li><code>auth.email-outbox.processing-duration-seconds</code> measures complete processing time for a claimed job.</li>
+          </ul>
+          <p>
+            Alert on dead deliveries, persistent claim or persistence errors, lease loss, and abnormal processing
+            latency. Keep the monitor listener private and allow access only from health and metrics infrastructure.
+          </p>
+
           <h2>Deployment Checklist</h2>
           <ul>
             <li>Serve the service only behind TLS.</li>

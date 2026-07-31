@@ -5,10 +5,12 @@
 
 #include <userver/formats/json.hpp>
 #include <userver/logging/log.hpp>
+#include <userver/utils/fast_scope_guard.hpp>
 
 #include <auth/infra/workers/email_outbox_processor.hpp>
 #include <auth/infra/workers/email_outbox_retry_policy.hpp>
 #include <auth/services/ports/notifications/email_verification_sender.hpp>
+#include <auth/services/ports/observability/email_outbox_metrics.hpp>
 #include <auth/services/ports/repositories/email_outbox_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/uow/db_transaction.hpp>
@@ -21,13 +23,15 @@ EmailOutboxProcessor::EmailOutboxProcessor(
     services::ports::EmailVerificationSender& sender,
     userver::engine::TaskProcessor& task_processor,
     EmailOutboxWorkerStaticConfig static_config,
-    const EmailOutboxRuntimeConfigProvider& runtime_config_provider)
+    const EmailOutboxRuntimeConfigProvider& runtime_config_provider,
+    services::ports::observability::EmailOutboxMetrics& metrics)
     : tx_manager_(tx_manager),
       outbox_repo_(outbox_repo),
       sender_(sender),
       task_processor_(task_processor),
       static_config_(static_config),
-      runtime_config_provider_(runtime_config_provider) {}
+      runtime_config_provider_(runtime_config_provider),
+      metrics_(metrics) {}
 
 EmailOutboxProcessor::~EmailOutboxProcessor() { Stop(); }
 
@@ -68,6 +72,8 @@ void EmailOutboxProcessor::Tick() {
                                     cfg.max_attempts);
     tx->Commit();
   } catch (const std::exception& e) {
+    metrics_.RecordError(
+        services::ports::observability::EmailOutboxErrorStage::kClaim);
     LOG_ERROR() << "EmailOutboxProcessor: claim failed: " << e.what();
     return;
   }
@@ -77,6 +83,13 @@ void EmailOutboxProcessor::Tick() {
   }
 
   for (const auto& job : batch) {
+    const auto processing_started_at = std::chrono::steady_clock::now();
+    const userver::utils::FastScopeGuard processing_timer{
+        [this, processing_started_at]() noexcept {
+          metrics_.ObserveProcessingDuration(std::chrono::steady_clock::now() -
+                                             processing_started_at);
+        }};
+
     try {
       if (job.template_name == "verification_code") {
         services::ports::VerificationEmail msg;
@@ -117,8 +130,13 @@ void EmailOutboxProcessor::Tick() {
       tx->Commit();
 
       if (persisted) {
+        metrics_.RecordDeliveryOutcome(
+            services::ports::observability::EmailOutboxDeliveryOutcome::kSent);
         LOG_INFO() << "EmailOutboxProcessor: marked sent job_id=" << job.id;
       } else {
+        metrics_.RecordDeliveryOutcome(
+            services::ports::observability::EmailOutboxDeliveryOutcome::
+                kLeaseLost);
         LOG_WARNING() << "EmailOutboxProcessor: send result ignored after "
                          "lease loss job_id="
                       << job.id;
@@ -136,8 +154,10 @@ void EmailOutboxProcessor::Tick() {
           retryable = delivery_error->IsRetryable();
         }
 
+        const bool mark_dead =
+            ShouldMarkEmailOutboxDead(attempt, cfg.max_attempts, retryable);
         bool persisted = false;
-        if (ShouldMarkEmailOutboxDead(attempt, cfg.max_attempts, retryable)) {
+        if (mark_dead) {
           persisted = outbox_repo_.MarkDead(*tx, job.id, job.lease_id,
                                             failure_now, std::string{e.what()});
         } else {
@@ -150,11 +170,23 @@ void EmailOutboxProcessor::Tick() {
         tx->Commit();
 
         if (!persisted) {
+          metrics_.RecordDeliveryOutcome(
+              services::ports::observability::EmailOutboxDeliveryOutcome::
+                  kLeaseLost);
           LOG_WARNING() << "EmailOutboxProcessor: failure result ignored after "
                            "lease loss job_id="
                         << job.id;
+        } else if (mark_dead) {
+          metrics_.RecordDeliveryOutcome(services::ports::observability::
+                                             EmailOutboxDeliveryOutcome::kDead);
+        } else {
+          metrics_.RecordDeliveryOutcome(
+              services::ports::observability::EmailOutboxDeliveryOutcome::
+                  kRetryScheduled);
         }
       } catch (const std::exception& db_e) {
+        metrics_.RecordError(
+            services::ports::observability::EmailOutboxErrorStage::kPersist);
         LOG_ERROR()
             << "EmailOutboxProcessor: failed to persist send result for job_id="
             << job.id << ": " << db_e.what()
