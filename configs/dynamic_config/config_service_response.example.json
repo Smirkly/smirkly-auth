@@ -1,0 +1,44 @@
+{
+  "configs": {
+    "SMIRKLY_AUTH_RUNTIME_CONFIG": {
+      "sign_in": {
+        "require_verified_email": false,
+        "rate_limit": {
+          "window_seconds": 900,
+          "max_attempts_per_identifier": 10,
+          "max_attempts_per_user": 10,
+          "max_attempts_per_ip": 50
+        }
+      },
+      "session_activity": {
+        "update_threshold_seconds": 300
+      },
+      "email_verification": {
+        "code_ttl_seconds": 900,
+        "max_code_attempts": 5,
+        "rate_limit_window_seconds": 900,
+        "max_attempts_per_email": 5,
+        "max_attempts_per_user": 5,
+        "max_attempts_per_ip": 50
+      },
+      "password_reset": {
+        "token_ttl_seconds": 900,
+        "max_token_attempts": 5,
+        "rate_limit_window_seconds": 900,
+        "max_attempts_per_email": 5,
+        "max_attempts_per_user": 5,
+        "max_attempts_per_ip": 50
+      }
+    },
+    "SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG": {
+      "processing_enabled": true,
+      "batch_size": 20,
+      "max_attempts": 10,
+      "stuck_timeout_seconds": 300,
+      "retry_base_delay_seconds": 2,
+      "retry_max_delay_seconds": 600
+    }
+  },
+  "updated_at": "2026-06-26T00:00:00Z",
+  "kill_switches_disabled": []
+}

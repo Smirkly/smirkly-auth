@@ -30,27 +30,30 @@ struct AuthServiceComponent::Impl {
         runtime_policy_provider(
             ctx.FindComponent<userver::components::DynamicConfig>().GetSource(),
             services::policies::AuthRuntimePolicies{
-                .session = services::policies::SessionPolicy{
-                    .refresh_token_ttl = security.GetRefreshTokenTtl(),
-                },
+                .session =
+                    services::policies::SessionPolicy{
+                        .refresh_token_ttl = security.GetRefreshTokenTtl(),
+                    },
                 .sign_in = services::policies::SignInPolicy{},
                 .email_verification =
                     services::policies::EmailVerificationPolicy{},
+                .password_reset = services::policies::PasswordResetPolicy{},
             }),
-        auth_service(infra.GetTransactionManager(), infra.GetUserRepository(),
-                     infra.GetEmailOutboxRepository(),
-                     infra.GetEmailVerificationRepository(),
-                     security.GetPasswordHasher(),
-                     security.GetVerificationCodeGenerator(),
-                     security.GetJwtTokenProvider(),
-                     infra.GetDeviceRepository(), infra.GetSessionRepository(),
-                     security.GetIdGenerator(),
-                     services::policies::SessionPolicy{
-                         .refresh_token_ttl = security.GetRefreshTokenTtl(),
-                     },
-                     {},
-                     {},
-                     &runtime_policy_provider) {}
+        auth_service(
+            infra.GetTransactionManager(), infra.GetUserRepository(),
+            infra.GetEmailOutboxRepository(),
+            infra.GetEmailVerificationRepository(),
+            infra.GetSignInAttemptRepository(),
+            infra.GetPasswordResetRepository(), security.GetPasswordHasher(),
+            security.GetRefreshTokenHasher(),
+            security.GetPasswordResetTokenGenerator(),
+            security.GetVerificationCodeGenerator(),
+            security.GetJwtTokenProvider(), infra.GetDeviceRepository(),
+            infra.GetSessionRepository(), security.GetIdGenerator(),
+            services::policies::SessionPolicy{
+                .refresh_token_ttl = security.GetRefreshTokenTtl(),
+            },
+            {}, {}, &runtime_policy_provider) {}
 };
 
 AuthServiceComponent::AuthServiceComponent(

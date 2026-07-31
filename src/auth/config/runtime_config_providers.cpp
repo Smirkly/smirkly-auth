@@ -21,6 +21,7 @@ DynamicConfigAuthRuntimePolicyProvider::Get() const {
   policies.session.activity_update_threshold =
       runtime.session.activity_update_threshold;
   policies.email_verification = runtime.email_verification;
+  policies.password_reset = runtime.password_reset;
 
   return policies;
 }

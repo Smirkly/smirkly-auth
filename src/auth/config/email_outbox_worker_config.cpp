@@ -20,8 +20,6 @@ infra::messaging::smtp::TlsMode ParseTlsMode(std::string_view value) {
 
 EmailOutboxWorkerConfig ParseEmailOutboxWorkerConfig(
     const userver::components::ComponentConfig& cfg) {
-  const auto& smtp = cfg["smtp"];
-
   EmailOutboxWorkerConfig out;
   out.enabled = cfg["enabled"].As<bool>(true);
   out.task_processor_name =
@@ -29,6 +27,12 @@ EmailOutboxWorkerConfig ParseEmailOutboxWorkerConfig(
   out.worker.enabled = out.enabled;
   out.worker.poll_interval =
       std::chrono::milliseconds{cfg["poll_interval_ms"].As<int>(1000)};
+
+  if (!out.enabled) {
+    return out;
+  }
+
+  const auto& smtp = cfg["smtp"];
 
   out.smtp.host = smtp["host"].As<std::string>();
   out.smtp.port = static_cast<std::uint16_t>(smtp["port"].As<int>(587));

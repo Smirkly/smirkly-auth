@@ -17,6 +17,7 @@ UPDATE email_outbox e
 SET
     status       = 'processing',
     locked_until = $3,
+    lease_id     = gen_random_uuid(),
     attempts     = e.attempts + 1,
     updated_at   = $2,
     last_error   = NULL
@@ -24,6 +25,7 @@ FROM candidates c
 WHERE e.id = c.id
 RETURNING
     e.id::text AS id,
+    e.lease_id::text AS lease_id,
     e.to_email,
     e.template,
     e.payload,

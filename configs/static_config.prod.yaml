@@ -44,7 +44,8 @@ components_manager:
                 - ::1/128
 
         auth-security:
-            verification_code_length: 6
+            password_reset_token_bytes: 32
+            refresh-token-pepper: $AUTH_REFRESH_TOKEN_PEPPER
             jwt:
                 issuer: smirkly-auth
                 audience: $AUTH_JWT_AUDIENCE
@@ -141,11 +142,21 @@ components_manager:
         dns-client:
             fs-task-processor: fs-task-processor
 
-        handler-ping:
-            path: /ping
+
+        handler-health-live:
+            path: /health/live
             method: GET
-            task_processor: main-task-processor
+            task_processor: monitor-task-processor
             throttling_enabled: false
+
+        handler-health-ready:
+            path: /health/ready
+            method: GET
+            task_processor: monitor-task-processor
+            throttling_enabled: false
+            postgres-component: postgres-auth
+
+
 
         handler-server-monitor:
             path: /service/monitor
@@ -190,6 +201,17 @@ components_manager:
 
         handler-resend-email-verification:
             path: /auth/v0/verify-email/resend
+            method: POST
+            task_processor: main-task-processor
+
+
+        handler-auth-password-reset-request:
+            path: /auth/v0/password-reset/request
+            method: POST
+            task_processor: main-task-processor
+
+        handler-auth-password-reset-confirm:
+            path: /auth/v0/password-reset/confirm
             method: POST
             task_processor: main-task-processor
 

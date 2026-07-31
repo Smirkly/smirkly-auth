@@ -21,8 +21,8 @@ std::size_t ParseSize(const userver::formats::json::Value& value,
     throw std::runtime_error(std::string{field} + " must not be negative");
   }
   const auto as_uint = static_cast<std::uint64_t>(parsed);
-  if (as_uint > static_cast<std::uint64_t>(
-                    std::numeric_limits<std::size_t>::max())) {
+  if (as_uint >
+      static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
     throw std::runtime_error(std::string{field} + " is too large");
   }
   const auto result = static_cast<std::size_t>(as_uint);
@@ -36,8 +36,8 @@ std::chrono::seconds ParseSeconds(const userver::formats::json::Value& value,
                                   std::string_view field,
                                   std::chrono::seconds default_value,
                                   std::chrono::seconds min_value) {
-  const auto parsed = value[std::string{field}].As<std::int64_t>(
-      default_value.count());
+  const auto parsed =
+      value[std::string{field}].As<std::int64_t>(default_value.count());
   const auto result = std::chrono::seconds{parsed};
   if (result < min_value) {
     throw std::runtime_error(std::string{field} + " is below minimum");
@@ -49,15 +49,28 @@ std::chrono::seconds ParseSeconds(const userver::formats::json::Value& value,
 
 namespace services::policies {
 
-AuthRuntimePolicies Parse(
-    const userver::formats::json::Value& value,
-    userver::formats::parse::To<AuthRuntimePolicies>) {
+AuthRuntimePolicies Parse(const userver::formats::json::Value& value,
+                          userver::formats::parse::To<AuthRuntimePolicies>) {
   AuthRuntimePolicies config;
 
   const auto sign_in = value["sign_in"];
   config.sign_in.require_verified_email =
       sign_in["require_verified_email"].As<bool>(
           config.sign_in.require_verified_email);
+
+  const auto sign_in_rate_limit = sign_in["rate_limit"];
+  config.sign_in.rate_limit_window =
+      ParseSeconds(sign_in_rate_limit, "window_seconds",
+                   config.sign_in.rate_limit_window, std::chrono::seconds{1});
+  config.sign_in.max_attempts_per_identifier =
+      ParseSize(sign_in_rate_limit, "max_attempts_per_identifier",
+                config.sign_in.max_attempts_per_identifier, 0);
+  config.sign_in.max_attempts_per_user =
+      ParseSize(sign_in_rate_limit, "max_attempts_per_user",
+                config.sign_in.max_attempts_per_user, 0);
+  config.sign_in.max_attempts_per_ip =
+      ParseSize(sign_in_rate_limit, "max_attempts_per_ip",
+                config.sign_in.max_attempts_per_ip, 0);
 
   const auto session_activity = value["session_activity"];
   config.session.activity_update_threshold = ParseSeconds(
@@ -66,12 +79,10 @@ AuthRuntimePolicies Parse(
 
   const auto email_verification = value["email_verification"];
   auto& policy = config.email_verification;
-  policy.code_ttl =
-      ParseSeconds(email_verification, "code_ttl_seconds", policy.code_ttl,
-                   std::chrono::seconds{1});
-  policy.max_code_attempts =
-      ParseSize(email_verification, "max_code_attempts",
-                policy.max_code_attempts, 1);
+  policy.code_ttl = ParseSeconds(email_verification, "code_ttl_seconds",
+                                 policy.code_ttl, std::chrono::seconds{1});
+  policy.max_code_attempts = ParseSize(email_verification, "max_code_attempts",
+                                       policy.max_code_attempts, 1);
   policy.rate_limit_window =
       ParseSeconds(email_verification, "rate_limit_window_seconds",
                    policy.rate_limit_window, std::chrono::seconds{1});
@@ -81,9 +92,28 @@ AuthRuntimePolicies Parse(
   policy.max_attempts_per_user =
       ParseSize(email_verification, "max_attempts_per_user",
                 policy.max_attempts_per_user, 0);
-  policy.max_attempts_per_ip =
-      ParseSize(email_verification, "max_attempts_per_ip",
-                policy.max_attempts_per_ip, 0);
+  policy.max_attempts_per_ip = ParseSize(
+      email_verification, "max_attempts_per_ip", policy.max_attempts_per_ip, 0);
+
+  const auto password_reset = value["password_reset"];
+  auto& reset_policy = config.password_reset;
+  reset_policy.token_ttl =
+      ParseSeconds(password_reset, "token_ttl_seconds", reset_policy.token_ttl,
+                   std::chrono::seconds{1});
+  reset_policy.max_token_attempts = ParseSize(
+      password_reset, "max_token_attempts", reset_policy.max_token_attempts, 1);
+  reset_policy.rate_limit_window =
+      ParseSeconds(password_reset, "rate_limit_window_seconds",
+                   reset_policy.rate_limit_window, std::chrono::seconds{1});
+  reset_policy.max_attempts_per_email =
+      ParseSize(password_reset, "max_attempts_per_email",
+                reset_policy.max_attempts_per_email, 0);
+  reset_policy.max_attempts_per_user =
+      ParseSize(password_reset, "max_attempts_per_user",
+                reset_policy.max_attempts_per_user, 0);
+  reset_policy.max_attempts_per_ip =
+      ParseSize(password_reset, "max_attempts_per_ip",
+                reset_policy.max_attempts_per_ip, 0);
 
   return config;
 }
@@ -100,7 +130,8 @@ EmailOutboxRuntimeConfig Parse(
   config.processing_enabled =
       value["processing_enabled"].As<bool>(config.processing_enabled);
   config.batch_size = ParseSize(value, "batch_size", config.batch_size, 1);
-  config.max_attempts = ParseSize(value, "max_attempts", config.max_attempts, 1);
+  config.max_attempts =
+      ParseSize(value, "max_attempts", config.max_attempts, 1);
   config.stuck_timeout =
       ParseSeconds(value, "stuck_timeout_seconds", config.stuck_timeout,
                    std::chrono::seconds{1});
@@ -122,7 +153,13 @@ const userver::dynamic_config::Key<AuthRuntimeConfig> kAuthRuntimeConfig{
     "SMIRKLY_AUTH_RUNTIME_CONFIG",
     userver::dynamic_config::DefaultAsJsonString{R"({
       "sign_in": {
-        "require_verified_email": false
+        "require_verified_email": false,
+        "rate_limit": {
+          "window_seconds": 900,
+          "max_attempts_per_identifier": 10,
+          "max_attempts_per_user": 10,
+          "max_attempts_per_ip": 50
+        }
       },
       "session_activity": {
         "update_threshold_seconds": 300
@@ -134,13 +171,20 @@ const userver::dynamic_config::Key<AuthRuntimeConfig> kAuthRuntimeConfig{
         "max_attempts_per_email": 5,
         "max_attempts_per_user": 5,
         "max_attempts_per_ip": 50
+      },
+      "password_reset": {
+        "token_ttl_seconds": 900,
+        "max_token_attempts": 5,
+        "rate_limit_window_seconds": 900,
+        "max_attempts_per_email": 5,
+        "max_attempts_per_user": 5,
+        "max_attempts_per_ip": 50
       }
     })"}};
 
 const userver::dynamic_config::Key<EmailOutboxRuntimeConfig>
-    kEmailOutboxRuntimeConfig{
-        "SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG",
-        userver::dynamic_config::DefaultAsJsonString{R"({
+    kEmailOutboxRuntimeConfig{"SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG",
+                              userver::dynamic_config::DefaultAsJsonString{R"({
           "processing_enabled": true,
           "batch_size": 20,
           "max_attempts": 10,

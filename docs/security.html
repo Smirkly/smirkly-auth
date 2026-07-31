@@ -102,20 +102,21 @@
           <p>
             <code>X-Forwarded-For</code> and <code>X-Real-IP</code> are untrusted user input unless the request came from a
             configured trusted proxy CIDR. Store normalized IP values only after parsing and validation. This affects
-            session metadata and verification rate limits.
+            session metadata, sign-in rate limits, and verification rate limits.
           </p>
 
           <h2>Logging Rules</h2>
           <ul>
-            <li>Do not log passwords, refresh tokens, raw cookies, JWT private keys, SMTP credentials, or verification codes.</li>
+            <li>Do not log passwords, refresh tokens, raw cookies, refresh token pepper, JWT private keys, SMTP credentials, or verification codes.</li>
             <li>Use correlation ids for SMTP outbox jobs and auth errors.</li>
             <li>Keep production log level at <code>info</code> unless debugging an active incident in a controlled window.</li>
           </ul>
 
           <h2>Known Security Backlog</h2>
           <p>
-            Add dedicated application-level rate limiting backed by a shared store for sign-up, sign-in, password reset,
-            and verification endpoints. Edge limits are still required even after application limits exist.
+            Sign-in, email verification, and password reset have shared PostgreSQL-backed application limits.
+            Sign-up still relies on edge protection, so add its own shared-store limiter before exposing registration
+            to untrusted high-volume traffic. Edge request-size and path limits remain required.
           </p>
 
         </div>

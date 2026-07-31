@@ -1,14 +1,15 @@
 {
   "name": "smirkly-auth",
   "dockerComposeFile": [
-    "../docker-compose.yml",
     "../docker-compose.devcontainer.yml"
   ],
   "service": "smirkly-auth-workspace",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "overrideCommand": false,
-  "remoteUser": "root",
+  "remoteUser": "developer",
+  "containerUser": "developer",
+  "updateRemoteUserUID": false,
   "customizations": {
     "vscode": {
       "extensions": [
@@ -46,5 +47,5 @@
       "label": "Postgres"
     }
   },
-  "postCreateCommand": "git config --global --add safe.directory /workspace && cmake --preset debug -DUSERVER_PYTHON=/usr/bin/python3"
+  "postCreateCommand": "git config --global --replace-all safe.directory /workspace"
 }
