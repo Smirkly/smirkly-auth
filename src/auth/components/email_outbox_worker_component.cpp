@@ -4,6 +4,7 @@
 
 #include <userver/components/component_config.hpp>
 #include <userver/components/component_context.hpp>
+#include <userver/components/statistics_storage.hpp>
 #include <userver/dynamic_config/storage/component.hpp>
 #include <userver/logging/log.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
@@ -12,6 +13,7 @@
 #include <auth/config/email_outbox_worker_config.hpp>
 #include <auth/config/runtime_config_providers.hpp>
 #include <auth/infra/messaging/smtp/smtp_email_sender.hpp>
+#include <auth/infra/observability/userver_email_outbox_metrics.hpp>
 #include <auth/infra/providers/email/log_email_verification_sender.hpp>
 #include <auth/infra/providers/email/smtp_email_verification_sender.hpp>
 #include <auth/infra/workers/email_outbox_processor.hpp>
@@ -21,6 +23,7 @@ struct EmailOutboxWorkerComponent::Impl {
   AuthInfraComponent& infra;
   config::EmailOutboxWorkerConfig worker_config;
   config::DynamicConfigEmailOutboxRuntimeConfigProvider runtime_config_provider;
+  infra::observability::UserverEmailOutboxMetrics metrics;
 
   std::unique_ptr<infra::providers::email::SmtpEmailVerificationSender>
       smtp_verification_sender;
@@ -34,7 +37,9 @@ struct EmailOutboxWorkerComponent::Impl {
         worker_config(config::ParseEmailOutboxWorkerConfig(cfg)),
         runtime_config_provider(
             ctx.FindComponent<userver::components::DynamicConfig>()
-                .GetSource()) {
+                .GetSource()),
+        metrics(ctx.FindComponent<userver::components::StatisticsStorage>()
+                    .GetMetricsStorage()) {
     if (!worker_config.enabled) {
       LOG_INFO() << "EmailOutboxWorkerComponent disabled by config";
       return;
@@ -54,8 +59,8 @@ struct EmailOutboxWorkerComponent::Impl {
 
     processor = std::make_unique<infra::workers::EmailOutboxProcessor>(
         infra.GetTransactionManager(), infra.GetEmailOutboxRepository(),
-        *verification_sender, tp, worker_config.worker,
-        runtime_config_provider);
+        *verification_sender, tp, worker_config.worker, runtime_config_provider,
+        metrics);
   }
 };
 
