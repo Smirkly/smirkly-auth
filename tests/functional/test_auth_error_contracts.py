@@ -62,6 +62,7 @@ async def test_concurrent_sign_ups_cannot_bypass_rate_limit(service_client):
         suffix = uuid.uuid4().hex[:12]
         return await service_client.post(
             "/auth/v0/sign-up",
+            headers={"X-Forwarded-For": "198.51.100.40"},
             json={
                 "username": f"signup_limit_{index}_{suffix}",
                 "email": f"signup-limit-{index}-{suffix}@example.com",
