@@ -56,6 +56,7 @@ userver_add_sql_library(
         write/email_outbox/*.sql
         write/password_resets/*.sql
         write/sign_in_attempts/*.sql
+        write/sign_up_attempts/*.sql
         write/email_verifications/email_verification_attempts_insert.sql
         write/email_verifications/email_verification_attempts_lock_scopes.sql
         write/email_verifications/email_verification_attempts_try_record.sql

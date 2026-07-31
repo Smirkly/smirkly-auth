@@ -17,6 +17,7 @@ DynamicConfigAuthRuntimePolicyProvider::Get() const {
 
   const auto snapshot = source_.GetSnapshot();
   const auto& runtime = snapshot[kAuthRuntimeConfig];
+  policies.sign_up = runtime.sign_up;
   policies.sign_in = runtime.sign_in;
   policies.session.activity_update_threshold =
       runtime.session.activity_update_threshold;

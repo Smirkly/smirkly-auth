@@ -11,6 +11,7 @@ class EmailOutboxRepository;
 class EmailVerificationRepository;
 class PasswordResetRepository;
 class SignInAttemptRepository;
+class SignUpAttemptRepository;
 class UserRepository;
 class TransactionManager;
 class DeviceRepository;
@@ -44,6 +45,12 @@ class AuthInfraComponent final
 
   const services::ports::EmailVerificationRepository&
   GetEmailVerificationRepository() const noexcept;
+
+  services::ports::SignUpAttemptRepository&
+  GetSignUpAttemptRepository() noexcept;
+
+  const services::ports::SignUpAttemptRepository& GetSignUpAttemptRepository()
+      const noexcept;
 
   services::ports::SignInAttemptRepository&
   GetSignInAttemptRepository() noexcept;

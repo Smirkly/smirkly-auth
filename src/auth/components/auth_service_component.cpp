@@ -34,6 +34,7 @@ struct AuthServiceComponent::Impl {
                     services::policies::SessionPolicy{
                         .refresh_token_ttl = security.GetRefreshTokenTtl(),
                     },
+                .sign_up = services::policies::SignUpRateLimitPolicy{},
                 .sign_in = services::policies::SignInPolicy{},
                 .email_verification =
                     services::policies::EmailVerificationPolicy{},
@@ -43,6 +44,7 @@ struct AuthServiceComponent::Impl {
             infra.GetTransactionManager(), infra.GetUserRepository(),
             infra.GetEmailOutboxRepository(),
             infra.GetEmailVerificationRepository(),
+            infra.GetSignUpAttemptRepository(),
             infra.GetSignInAttemptRepository(),
             infra.GetPasswordResetRepository(), security.GetPasswordHasher(),
             security.GetRefreshTokenHasher(),

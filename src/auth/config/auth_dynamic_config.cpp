@@ -53,6 +53,14 @@ AuthRuntimePolicies Parse(const userver::formats::json::Value& value,
                           userver::formats::parse::To<AuthRuntimePolicies>) {
   AuthRuntimePolicies config;
 
+  const auto sign_up_rate_limit = value["sign_up"]["rate_limit"];
+  config.sign_up.window =
+      ParseSeconds(sign_up_rate_limit, "window_seconds", config.sign_up.window,
+                   std::chrono::seconds{1});
+  config.sign_up.max_attempts_per_ip =
+      ParseSize(sign_up_rate_limit, "max_attempts_per_ip",
+                config.sign_up.max_attempts_per_ip, 0);
+
   const auto sign_in = value["sign_in"];
   config.sign_in.require_verified_email =
       sign_in["require_verified_email"].As<bool>(
@@ -152,8 +160,14 @@ namespace config {
 const userver::dynamic_config::Key<AuthRuntimeConfig> kAuthRuntimeConfig{
     "SMIRKLY_AUTH_RUNTIME_CONFIG",
     userver::dynamic_config::DefaultAsJsonString{R"({
+      "sign_up": {
+        "rate_limit": {
+          "window_seconds": 900,
+          "max_attempts_per_ip": 20
+        }
+      },
       "sign_in": {
-        "require_verified_email": false,
+        "require_verified_email": true,
         "rate_limit": {
           "window_seconds": 900,
           "max_attempts_per_identifier": 10,

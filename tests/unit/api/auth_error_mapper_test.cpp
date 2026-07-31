@@ -7,6 +7,7 @@
 
 #include <auth/services/errors/change_password_errors.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
+#include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
 
 namespace {
@@ -22,6 +23,16 @@ UTEST(AuthErrorMapper, MapsSignInRateLimit) {
   EXPECT_EQ(mapped->status, HttpStatus::kTooManyRequests);
   EXPECT_EQ(mapped->code, "auth.sign_in.too_many_attempts");
   EXPECT_EQ(mapped->message, "too many sign-in attempts");
+}
+
+UTEST(AuthErrorMapper, MapsSignUpRateLimit) {
+  const auto mapped = utils::TryMapAuthError(
+      errors::TooManySignUpAttempts{"too many sign-up attempts"});
+
+  ASSERT_TRUE(mapped.has_value());
+  EXPECT_EQ(mapped->status, HttpStatus::kTooManyRequests);
+  EXPECT_EQ(mapped->code, "auth.sign_up.too_many_attempts");
+  EXPECT_EQ(mapped->message, "too many sign-up attempts");
 }
 
 UTEST(AuthErrorMapper, MapsVerificationRateLimitByContext) {

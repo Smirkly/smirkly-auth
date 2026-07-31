@@ -42,6 +42,11 @@ struct HttpError final {
     return HttpError{HttpStatus::kBadRequest, "sign_up.validation_failed",
                      e->what()};
   }
+  if (dynamic_cast<const service_errors::TooManySignUpAttempts*>(&error)) {
+    return HttpError{HttpStatus::kTooManyRequests,
+                     "auth.sign_up.too_many_attempts",
+                     "too many sign-up attempts"};
+  }
   if (dynamic_cast<const service_errors::UsernameTaken*>(&error)) {
     return HttpError{HttpStatus::kConflict, "sign_up.username_taken",
                      "username taken"};

@@ -22,6 +22,7 @@
 #include <auth/services/ports/repositories/password_reset_repository.hpp>
 #include <auth/services/ports/repositories/session_repository.hpp>
 #include <auth/services/ports/repositories/sign_in_attempt_repository.hpp>
+#include <auth/services/ports/repositories/sign_up_attempt_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/security/jwt_token_provider.hpp>
 #include <auth/services/ports/security/password_hasher.hpp>
@@ -40,6 +41,7 @@ class AuthService {
               ports::UserRepository& user_repo,
               ports::EmailOutboxRepository& email_outbox_repo,
               ports::EmailVerificationRepository& email_verification_repo,
+              ports::SignUpAttemptRepository& sign_up_attempt_repo,
               ports::SignInAttemptRepository& sign_in_attempt_repo,
               ports::PasswordResetRepository& password_reset_repo,
               ports::PasswordHasher& password_hasher,
@@ -101,6 +103,7 @@ class AuthService {
   ports::UserRepository& user_repo_;
   ports::EmailOutboxRepository& email_outbox_repo_;
   ports::EmailVerificationRepository& email_verification_repo_;
+  ports::SignUpAttemptRepository& sign_up_attempt_repo_;
   ports::SignInAttemptRepository& sign_in_attempt_repo_;
   ports::PasswordResetRepository& password_reset_repo_;
   ports::DeviceRepository& device_repo_;
@@ -114,6 +117,7 @@ class AuthService {
   ports::support::IdGenerator& id_generator_;
   const ports::config::AuthRuntimePolicyProvider* runtime_policy_provider_;
   policies::EmailVerificationPolicy email_verification_policy_;
+  policies::SignUpRateLimitPolicy sign_up_rate_limit_policy_;
   policies::PasswordResetPolicy password_reset_policy_;
   policies::SessionPolicy session_policy_;
   policies::SignInPolicy sign_in_policy_;

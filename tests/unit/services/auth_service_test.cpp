@@ -3,6 +3,7 @@
 #include <auth/services/errors/password_reset_errors.hpp>
 #include <auth/services/errors/refresh_errors.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
+#include <auth/services/errors/sign_up_errors.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
 #include <auth/services/usecases/auth_service.hpp>
 
@@ -720,6 +721,30 @@ class FakeSignInAttemptRepository final
   std::optional<std::string> last_user_agent;
 };
 
+class FakeSignUpAttemptRepository final
+    : public ports::SignUpAttemptRepository {
+ public:
+  bool TryRecordAttempt(ports::DbTransaction&, std::string_view ip,
+                        std::chrono::system_clock::time_point,
+                        std::chrono::system_clock::time_point,
+                        std::size_t max_attempts_per_ip) override {
+    ++try_record_count;
+    last_ip = std::string{ip};
+    last_max_attempts_per_ip = max_attempts_per_ip;
+    if (!allow_attempt) {
+      return false;
+    }
+    ++record_attempt_count;
+    return true;
+  }
+
+  bool allow_attempt{true};
+  std::size_t try_record_count{0};
+  std::size_t record_attempt_count{0};
+  std::size_t last_max_attempts_per_ip{0};
+  std::string last_ip;
+};
+
 class FakeDeviceRepository final : public ports::DeviceRepository {
  public:
   domain::Device Insert(ports::DbTransaction&,
@@ -753,6 +778,7 @@ struct AuthServiceFixture final {
   FakeUserRepository user_repo;
   UnusedEmailOutboxRepository email_outbox_repo;
   FakeEmailVerificationRepository email_verification_repo;
+  FakeSignUpAttemptRepository sign_up_attempt_repo;
   FakeSignInAttemptRepository sign_in_attempt_repo;
   FakePasswordResetRepository password_reset_repo;
   FakePasswordHasher password_hasher;
@@ -770,6 +796,7 @@ struct AuthServiceFixture final {
       user_repo,
       email_outbox_repo,
       email_verification_repo,
+      sign_up_attempt_repo,
       sign_in_attempt_repo,
       password_reset_repo,
       password_hasher,
@@ -785,6 +812,52 @@ struct AuthServiceFixture final {
       policies::EmailVerificationPolicy{},
   };
 };
+
+UTEST(AuthServiceSignUp, RateLimitStopsBeforeUniquenessChecksAndBcrypt) {
+  AuthServiceFixture fixture;
+  fixture.sign_up_attempt_repo.allow_attempt = false;
+
+  EXPECT_THROW(static_cast<void>(fixture.service.SignUp(
+                   contracts::SignUpCommand{
+                       .username = "unit_signup",
+                       .password = "StrongPass123!",
+                       .phone = std::nullopt,
+                       .email = "unit-signup@example.com",
+                   },
+                   contracts::RequestMeta{
+                       .ip = "198.51.100.20",
+                       .user_agent = "unit-test",
+                   })),
+               errors::TooManySignUpAttempts);
+
+  EXPECT_EQ(fixture.sign_up_attempt_repo.try_record_count, 1);
+  EXPECT_EQ(fixture.sign_up_attempt_repo.record_attempt_count, 0);
+  EXPECT_EQ(fixture.sign_up_attempt_repo.last_ip, "198.51.100.20");
+  EXPECT_EQ(fixture.sign_up_attempt_repo.last_max_attempts_per_ip, 20);
+  EXPECT_EQ(fixture.password_hasher.hash_count, 0);
+  EXPECT_EQ(fixture.tx_manager.begin_count, 1);
+}
+
+UTEST(AuthServiceSignUp, ValidationFailureDoesNotConsumeRateLimit) {
+  AuthServiceFixture fixture;
+
+  EXPECT_THROW(static_cast<void>(fixture.service.SignUp(
+                   contracts::SignUpCommand{
+                       .username = "x",
+                       .password = "short",
+                       .phone = std::nullopt,
+                       .email = "not-an-email",
+                   },
+                   contracts::RequestMeta{
+                       .ip = "198.51.100.21",
+                       .user_agent = "unit-test",
+                   })),
+               errors::SignUpValidation);
+
+  EXPECT_EQ(fixture.sign_up_attempt_repo.try_record_count, 0);
+  EXPECT_EQ(fixture.password_hasher.hash_count, 0);
+  EXPECT_EQ(fixture.tx_manager.begin_count, 0);
+}
 
 UTEST(AuthServiceVerifyEmail, InvalidCodeConsumesFinalAttemptAndLocksCode) {
   AuthServiceFixture fixture;
@@ -912,7 +985,28 @@ UTEST(AuthServiceSignIn, AllowsUnverifiedEmailWhenPolicyDisabled) {
   fixture.id_generator.ids.push_back("session-id");
   fixture.id_generator.ids.push_back("family-id");
 
-  const auto result = fixture.service.SignIn(contracts::SignInCommand{
+  auth::services::usecases::AuthService service{
+      fixture.tx_manager,
+      fixture.user_repo,
+      fixture.email_outbox_repo,
+      fixture.email_verification_repo,
+      fixture.sign_up_attempt_repo,
+      fixture.sign_in_attempt_repo,
+      fixture.password_reset_repo,
+      fixture.password_hasher,
+      fixture.refresh_token_hasher,
+      fixture.password_reset_token_generator,
+      fixture.code_generator,
+      fixture.token_provider,
+      fixture.device_repo,
+      fixture.session_repo,
+      fixture.id_generator,
+      fixture.session_policy,
+      policies::SignInPolicy{.require_verified_email = false},
+      policies::EmailVerificationPolicy{},
+  };
+
+  const auto result = service.SignIn(contracts::SignInCommand{
       .username = "unit_user",
       .email = std::nullopt,
       .phone = std::nullopt,
@@ -1041,7 +1135,7 @@ UTEST(AuthServiceSignIn, UnknownUserRecordsIdentifierAndIpAttempt) {
             std::make_optional<std::string>("198.51.100.12"));
 }
 
-UTEST(AuthServiceSignIn, RejectsUnverifiedEmailWhenPolicyEnabled) {
+UTEST(AuthServiceSignIn, RejectsUnverifiedEmailByDefault) {
   AuthServiceFixture fixture;
 
   auto user = MakeUser("user-id", "hash:CurrentPass123!");
@@ -1049,33 +1143,14 @@ UTEST(AuthServiceSignIn, RejectsUnverifiedEmailWhenPolicyEnabled) {
   user.is_email_verified = false;
   fixture.user_repo.users.emplace("user-id", user);
 
-  auth::services::usecases::AuthService service{
-      fixture.tx_manager,
-      fixture.user_repo,
-      fixture.email_outbox_repo,
-      fixture.email_verification_repo,
-      fixture.sign_in_attempt_repo,
-      fixture.password_reset_repo,
-      fixture.password_hasher,
-      fixture.refresh_token_hasher,
-      fixture.password_reset_token_generator,
-      fixture.code_generator,
-      fixture.token_provider,
-      fixture.device_repo,
-      fixture.session_repo,
-      fixture.id_generator,
-      fixture.session_policy,
-      policies::SignInPolicy{.require_verified_email = true},
-      policies::EmailVerificationPolicy{},
-  };
-
-  EXPECT_THROW(static_cast<void>(service.SignIn(contracts::SignInCommand{
-                   .username = "unit_user",
-                   .email = std::nullopt,
-                   .phone = std::nullopt,
-                   .password = "CurrentPass123!",
-               })),
-               errors::EmailNotVerified);
+  EXPECT_THROW(
+      static_cast<void>(fixture.service.SignIn(contracts::SignInCommand{
+          .username = "unit_user",
+          .email = std::nullopt,
+          .phone = std::nullopt,
+          .password = "CurrentPass123!",
+      })),
+      errors::EmailNotVerified);
   EXPECT_TRUE(fixture.session_repo.sessions.empty());
   EXPECT_EQ(fixture.sign_in_attempt_repo.record_attempt_count, 1);
   EXPECT_EQ(fixture.tx_manager.begin_count, 1);

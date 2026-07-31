@@ -57,6 +57,28 @@ async def test_sign_in_rejects_unverified_email_with_error_contract(
     _assert_error(response, 403, "auth.email_not_verified")
 
 
+async def test_concurrent_sign_ups_cannot_bypass_rate_limit(service_client):
+    async def attempt(index):
+        suffix = uuid.uuid4().hex[:12]
+        return await service_client.post(
+            "/auth/v0/sign-up",
+            json={
+                "username": f"signup_limit_{index}_{suffix}",
+                "email": f"signup-limit-{index}-{suffix}@example.com",
+                "password": "StrongPass123!",
+            },
+        )
+
+    responses = await asyncio.gather(*(attempt(index) for index in range(8)))
+    statuses = [response.status for response in responses]
+
+    assert statuses.count(201) == 2
+    assert statuses.count(429) == 6
+    for response in responses:
+        if response.status == 429:
+            _assert_error(response, 429, "auth.sign_up.too_many_attempts")
+
+
 async def test_sign_in_invalid_password_is_rate_limited(service_client, pgsql):
     account = await _sign_up_user(service_client, verified=True, pgsql=pgsql)
 

@@ -27,6 +27,7 @@ AuthService::AuthService(
     ports::UserRepository& user_repo,
     ports::EmailOutboxRepository& email_outbox_repo,
     ports::EmailVerificationRepository& email_verification_repo,
+    ports::SignUpAttemptRepository& sign_up_attempt_repo,
     ports::SignInAttemptRepository& sign_in_attempt_repo,
     ports::PasswordResetRepository& password_reset_repo,
     ports::PasswordHasher& password_hasher,
@@ -46,6 +47,7 @@ AuthService::AuthService(
     : user_repo_(user_repo),
       email_outbox_repo_(email_outbox_repo),
       email_verification_repo_(email_verification_repo),
+      sign_up_attempt_repo_(sign_up_attempt_repo),
       sign_in_attempt_repo_(sign_in_attempt_repo),
       password_reset_repo_(password_reset_repo),
       device_repo_(device_repo),
@@ -77,6 +79,7 @@ policies::AuthRuntimePolicies AuthService::GetRuntimePolicies() const {
 
   return policies::AuthRuntimePolicies{
       .session = session_policy_,
+      .sign_up = sign_up_rate_limit_policy_,
       .sign_in = sign_in_policy_,
       .email_verification = email_verification_policy_,
       .password_reset = password_reset_policy_,
@@ -85,10 +88,22 @@ policies::AuthRuntimePolicies AuthService::GetRuntimePolicies() const {
 
 contracts::SignUpResult AuthService::SignUp(
     const contracts::SignUpCommand& cmd, const contracts::RequestMeta& meta) {
-  const auto email_verification_policy =
-      GetRuntimePolicies().email_verification;
+  const auto runtime_policies = GetRuntimePolicies();
+  const auto& sign_up_policy = runtime_policies.sign_up;
+  const auto& email_verification_policy = runtime_policies.email_verification;
   const auto input = sign_up_validator_.ValidateAndNormalize(cmd);
   const auto& normalized_username = input.username.Value();
+
+  if (meta.ip && sign_up_policy.max_attempts_per_ip > 0) {
+    const auto now = std::chrono::system_clock::now();
+    auto tx = transaction_manager_.Begin("auth.sign_up.rate_limit");
+    if (!sign_up_attempt_repo_.TryRecordAttempt(
+            *tx, *meta.ip, now, now - sign_up_policy.window,
+            sign_up_policy.max_attempts_per_ip)) {
+      throw errors::TooManySignUpAttempts("too many sign-up attempts");
+    }
+    tx->Commit();
+  }
 
   // fast-fail
   if (user_repo_.ExistsByUsername(normalized_username)) {

@@ -163,7 +163,8 @@ def test_permanent_or_exhausted_failure_is_not_retried(pgsql):
     cursor.execute(
         """
         UPDATE email_outbox
-        SET status = 'dead', locked_until = NULL, lease_id = NULL,
+        SET status = 'dead', payload = '{}'::jsonb,
+            locked_until = NULL, lease_id = NULL,
             last_error = %s, updated_at = %s
         WHERE id = %s::uuid
           AND lease_id = %s::uuid
@@ -180,11 +181,12 @@ def test_permanent_or_exhausted_failure_is_not_retried(pgsql):
     assert retry_claim == []
 
     cursor.execute(
-        "SELECT status, last_error FROM email_outbox WHERE id = %s::uuid",
+        "SELECT status, payload, last_error FROM email_outbox WHERE id = %s::uuid",
         (job_id,),
     )
-    status, last_error = cursor.fetchone()
+    status, payload, last_error = cursor.fetchone()
     assert status == "dead"
+    assert payload == {}
     assert last_error == "permanent smtp auth failure"
 
 
