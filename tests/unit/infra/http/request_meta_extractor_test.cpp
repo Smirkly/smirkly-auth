@@ -77,6 +77,21 @@ UTEST(RequestMetaExtractor, UntrustedRemoteIgnoresForwardedHeaders) {
   EXPECT_EQ(*meta.user_agent, "unit-test");
 }
 
+UTEST(RequestMetaExtractor, CanonicalizesIpv4MappedRemoteAddress) {
+  const RequestMetaExtractor extractor{ClientIpExtractorConfig{}};
+  const auto request = MakeRequest("::ffff:198.51.100.9");
+
+  ExpectIp(extractor, *request, "198.51.100.9");
+}
+
+UTEST(RequestMetaExtractor, TrustsIpv4MappedProxyAsCanonicalIpv4) {
+  const RequestMetaExtractor extractor{TrustedLoopbackOnly()};
+  const auto request =
+      MakeRequest("::ffff:127.0.0.1", {{"X-Forwarded-For", "203.0.113.10"}});
+
+  ExpectIp(extractor, *request, "203.0.113.10");
+}
+
 UTEST(RequestMetaExtractor, TrustedProxyUsesRightmostUntrustedForwardedFor) {
   const RequestMetaExtractor extractor{TrustedLoopbackOnly()};
   const auto request =

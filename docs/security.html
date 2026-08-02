@@ -103,6 +103,8 @@
             <code>X-Forwarded-For</code> and <code>X-Real-IP</code> are untrusted user input unless the request came from a
             configured trusted proxy CIDR. Store normalized IP values only after parsing and validation. This affects
             session metadata, sign-up/sign-in rate limits, and verification rate limits.
+            IPv4-mapped IPv6 peers such as <code>::ffff:127.0.0.1</code> are canonicalized to IPv4 before trusted-proxy
+            matching and rate-limit key selection.
           </p>
 
           <h2>Logging Rules</h2>

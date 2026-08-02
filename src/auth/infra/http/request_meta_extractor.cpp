@@ -70,6 +70,18 @@ std::optional<ParsedIp> ParseIp(std::string_view raw) {
 
   in6_addr ipv6{};
   if (::inet_pton(AF_INET6, value.c_str(), &ipv6) == 1) {
+    if (IN6_IS_ADDR_V4MAPPED(&ipv6)) {
+      in_addr mapped_ipv4{};
+      std::memcpy(&mapped_ipv4,
+                  &ipv6.s6_addr[sizeof(ipv6.s6_addr) - sizeof(mapped_ipv4)],
+                  sizeof(mapped_ipv4));
+
+      ParsedIp parsed{.version = IpVersion::kV4,
+                      .text = InetToString(AF_INET, &mapped_ipv4)};
+      std::memcpy(parsed.bytes.data(), &mapped_ipv4, sizeof(mapped_ipv4));
+      return parsed;
+    }
+
     ParsedIp parsed{.version = IpVersion::kV6,
                     .text = InetToString(AF_INET6, &ipv6)};
     std::memcpy(parsed.bytes.data(), &ipv6, sizeof(ipv6));

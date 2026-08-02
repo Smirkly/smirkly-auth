@@ -57,7 +57,10 @@ async def test_sign_in_rejects_unverified_email_with_error_contract(
     _assert_error(response, 403, "auth.email_not_verified")
 
 
-async def test_concurrent_sign_ups_cannot_bypass_rate_limit(service_client):
+async def test_concurrent_sign_ups_cannot_bypass_rate_limit(
+    service_client,
+    pgsql,
+):
     async def attempt(index):
         suffix = uuid.uuid4().hex[:12]
         return await service_client.post(
@@ -78,6 +81,16 @@ async def test_concurrent_sign_ups_cannot_bypass_rate_limit(service_client):
     for response in responses:
         if response.status == 429:
             _assert_error(response, 429, "auth.sign_up.too_many_attempts")
+
+    cursor = pgsql["auth"].cursor()
+    cursor.execute(
+        """
+        SELECT host(ip), COUNT(*)
+        FROM sign_up_attempts
+        GROUP BY host(ip)
+        """
+    )
+    assert cursor.fetchall() == [("198.51.100.40", 2)]
 
 
 async def test_sign_in_invalid_password_is_rate_limited(service_client, pgsql):
