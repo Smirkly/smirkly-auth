@@ -7,7 +7,9 @@
 #include <auth/api/v0/auth/bearer_token.hpp>
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
-#include <auth/components/auth_service_component.hpp>
+#include <auth/components/auth_application_component.hpp>
+#include <auth/services/usecases/authentication_service.hpp>
+#include <auth/services/usecases/session_service.hpp>
 
 namespace {
 std::string ToIsoUtc(std::chrono::system_clock::time_point value) {
@@ -52,8 +54,12 @@ SessionsHandler::SessionsHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(context.FindComponent<components::AuthServiceComponent>()
-                        .GetAuthService()) {}
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
+      session_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetSessionService()) {}
 
 SessionsHandler::Value SessionsHandler::HandleRequestJsonThrow(
     const HttpRequest& request, const Value&, RequestContext&) const {
@@ -66,8 +72,9 @@ SessionsHandler::Value SessionsHandler::HandleRequestJsonThrow(
   }
 
   try {
-    const auto context = auth_service_.AuthenticateAccessToken(*access_token);
-    const auto result = auth_service_.ListSessions(context);
+    const auto context =
+        authentication_service_.AuthenticateAccessToken(*access_token);
+    const auto result = session_service_.ListSessions(context);
 
     userver::formats::json::ValueBuilder sessions(
         userver::formats::json::Type::kArray);

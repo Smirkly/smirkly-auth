@@ -11,21 +11,21 @@
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
 #include <auth/api/v0/utils/json_request.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
 #include <auth/services/errors/verify_email_errors.hpp>
 #include <auth/services/policies/verification_code_policy.hpp>
+#include <auth/services/usecases/identity_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 VerifyEmailHandler::VerifyEmailHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(
-          context
-              .FindComponent<smirkly::auth::components::AuthServiceComponent>()
-              .GetAuthService()),
+      identity_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetIdentityService()),
       request_meta_extractor_(
           context.FindComponent<smirkly::auth::components::AuthHttpComponent>()
               .GetRequestMetaExtractor()) {}
@@ -60,7 +60,8 @@ VerifyEmailHandler::Value VerifyEmailHandler::HandleRequestJsonThrow(
       services::contracts::VerifyEmailCommand{.email = *email, .code = *code};
 
   try {
-    auth_service_.VerifyEmail(cmd, request_meta_extractor_.Extract(request));
+    identity_service_.VerifyEmail(cmd,
+                                  request_meta_extractor_.Extract(request));
   } catch (const services::errors::AlreadyVerified&) {
     request.GetHttpResponse().SetStatus(
         userver::server::http::HttpStatus::kNoContent);

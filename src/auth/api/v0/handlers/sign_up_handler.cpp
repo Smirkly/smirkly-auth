@@ -6,21 +6,20 @@
 #include <auth/api/v0/dto/sign_up_request.hpp>
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
-#include <auth/services/usecases/auth_service.hpp>
+#include <auth/services/usecases/identity_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 SignUpHandler::SignUpHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(
-          context
-              .FindComponent<smirkly::auth::components::AuthServiceComponent>()
-              .GetAuthService()),
+      identity_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetIdentityService()),
       request_meta_extractor_(
           context.FindComponent<smirkly::auth::components::AuthHttpComponent>()
               .GetRequestMetaExtractor()) {}
@@ -39,7 +38,7 @@ SignUpHandler::Value SignUpHandler::HandleRequestJsonThrow(
   const auto meta = request_meta_extractor_.Extract(request);
 
   try {
-    auto result = auth_service_.SignUp(sign_up_cmd, meta);
+    auto result = identity_service_.SignUp(sign_up_cmd, meta);
     auto user_dto = infra::mapping::ToUserDto(result.user);
 
     userver::formats::json::ValueBuilder builder;

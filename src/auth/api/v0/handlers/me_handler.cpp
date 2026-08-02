@@ -6,15 +6,21 @@
 #include <auth/api/v0/auth/bearer_token.hpp>
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
-#include <auth/components/auth_service_component.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
+#include <auth/services/usecases/authentication_service.hpp>
+#include <auth/services/usecases/identity_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 MeHandler::MeHandler(const userver::components::ComponentConfig& config,
                      const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(context.FindComponent<components::AuthServiceComponent>()
-                        .GetAuthService()) {}
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
+      identity_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetIdentityService()) {}
 
 MeHandler::Value MeHandler::HandleRequestJsonThrow(const HttpRequest& request,
                                                    const Value&,
@@ -28,8 +34,9 @@ MeHandler::Value MeHandler::HandleRequestJsonThrow(const HttpRequest& request,
   }
 
   try {
-    const auto context = auth_service_.AuthenticateAccessToken(*access_token);
-    const auto result = auth_service_.GetMe(context);
+    const auto context =
+        authentication_service_.AuthenticateAccessToken(*access_token);
+    const auto result = identity_service_.GetCurrentUser(context);
     const auto user_dto = infra::mapping::ToUserDto(result.user);
 
     userver::formats::json::ValueBuilder response;

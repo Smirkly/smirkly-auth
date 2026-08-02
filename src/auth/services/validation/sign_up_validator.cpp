@@ -5,58 +5,9 @@
 
 #include <auth/services/errors/sign_up_errors.hpp>
 
-namespace {
-bool IsLowerAscii(char c) noexcept { return c >= 'a' && c <= 'z'; }
-
-bool IsUpperAscii(char c) noexcept { return c >= 'A' && c <= 'Z'; }
-
-bool IsDigitAscii(char c) noexcept { return c >= '0' && c <= '9'; }
-
-bool IsControlAscii(char c) noexcept {
-  return static_cast<unsigned char>(c) < static_cast<unsigned char>(' ');
-}
-}  // namespace
-
 namespace smirkly::auth::services::validation {
 SignUpValidator::SignUpValidator(policies::SignUpPolicy policy)
-    : policy_(std::move(policy)) {}
-
-void SignUpValidator::ValidatePassword(std::string_view password) const {
-  if (password.empty()) {
-    throw errors::SignUpValidation("password is empty");
-  }
-  if (password.size() < policy_.password_min_len) {
-    throw errors::SignUpValidation("password is too short");
-  }
-  if (password.size() > policy_.password_max_len) {
-    throw errors::SignUpValidation("password is too long");
-  }
-
-  bool has_lower = false;
-  bool has_upper = false;
-  bool has_digit = false;
-  bool has_other = false;
-
-  for (const char c : password) {
-    if (IsControlAscii(c) || c == '\x7f') {
-      throw errors::SignUpValidation(
-          "password must not contain control characters");
-    }
-    has_lower = has_lower || IsLowerAscii(c);
-    has_upper = has_upper || IsUpperAscii(c);
-    has_digit = has_digit || IsDigitAscii(c);
-    has_other =
-        has_other || (!IsLowerAscii(c) && !IsUpperAscii(c) && !IsDigitAscii(c));
-  }
-
-  const auto complexity_classes =
-      static_cast<int>(has_lower) + static_cast<int>(has_upper) +
-      static_cast<int>(has_digit) + static_cast<int>(has_other);
-  if (complexity_classes < 3) {
-    throw errors::SignUpValidation(
-        "password must include at least three character classes");
-  }
-}
+    : policy_(std::move(policy)), password_validator_(policy_.password) {}
 
 NormalizedSignUpInput SignUpValidator::ValidateAndNormalize(
     const contracts::SignUpCommand& cmd) const {
@@ -70,9 +21,9 @@ NormalizedSignUpInput SignUpValidator::ValidateAndNormalize(
     throw errors::SignUpValidation("email or phone is required");
   }
 
-  ValidatePassword(cmd.password);
-
   try {
+    password_validator_.Validate(cmd.password);
+
     NormalizedSignUpInput input{
         .username = domain::value_objects::Username{cmd.username},
         .password = cmd.password,

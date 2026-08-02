@@ -9,8 +9,10 @@
 #include <auth/api/v0/auth/bearer_token.hpp>
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
-#include <auth/components/auth_service_component.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/services/contracts/change_password.hpp>
+#include <auth/services/usecases/authentication_service.hpp>
+#include <auth/services/usecases/password_service.hpp>
 
 namespace {
 void ClearRefreshCookie(const userver::server::http::HttpRequest& request) {
@@ -29,8 +31,12 @@ ChangePasswordHandler::ChangePasswordHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(context.FindComponent<components::AuthServiceComponent>()
-                        .GetAuthService()) {}
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
+      password_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetPasswordService()) {}
 
 ChangePasswordHandler::Value ChangePasswordHandler::HandleRequestJsonThrow(
     const HttpRequest& request, const Value& body, RequestContext&) const {
@@ -56,8 +62,9 @@ ChangePasswordHandler::Value ChangePasswordHandler::HandleRequestJsonThrow(
   };
 
   try {
-    const auto context = auth_service_.AuthenticateAccessToken(*access_token);
-    auth_service_.ChangePassword(context, cmd);
+    const auto context =
+        authentication_service_.AuthenticateAccessToken(*access_token);
+    password_service_.ChangePassword(context, cmd);
     ClearRefreshCookie(request);
 
     request.GetHttpResponse().SetStatus(
