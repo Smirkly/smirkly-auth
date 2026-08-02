@@ -45,6 +45,12 @@ def auth_dynamic_config_defaults():
             {},
         )
         defaults["SMIRKLY_AUTH_RUNTIME_CONFIG"] = {
+            "sign_up": {
+                "rate_limit": {
+                    "window_seconds": 900,
+                    "max_attempts_per_ip": 2,
+                },
+            },
             "sign_in": {
                 "require_verified_email": True,
                 "rate_limit": {

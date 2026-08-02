@@ -1,7 +1,13 @@
 {
   "SMIRKLY_AUTH_RUNTIME_CONFIG": {
+    "sign_up": {
+      "rate_limit": {
+        "window_seconds": 900,
+        "max_attempts_per_ip": 20
+      }
+    },
     "sign_in": {
-      "require_verified_email": false,
+      "require_verified_email": true,
       "rate_limit": {
         "window_seconds": 900,
         "max_attempts_per_identifier": 10,

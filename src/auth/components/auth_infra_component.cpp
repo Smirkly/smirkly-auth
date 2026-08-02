@@ -13,6 +13,7 @@
 #include <auth/infra/db/pg/repositories/postgres_password_reset_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_session_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_sign_in_attempt_repository.hpp>
+#include <auth/infra/db/pg/repositories/postgres_sign_up_attempt_repository.hpp>
 #include <auth/infra/db/pg/repositories/postgres_user_repository.hpp>
 #include <auth/infra/db/pg/transactions/postgres_transaction_manager.hpp>
 
@@ -33,6 +34,7 @@ struct AuthInfraComponent::Impl {
   infra::db::pg::PostgresSessionRepository session_repo;
   infra::db::pg::PostgresEmailOutboxRepository email_outbox_repo;
   infra::db::pg::PostgresEmailVerificationRepository email_verification_repo;
+  infra::db::pg::PostgresSignUpAttemptRepository sign_up_attempt_repo;
   infra::db::pg::PostgresSignInAttemptRepository sign_in_attempt_repo;
   infra::db::pg::PostgresPasswordResetRepository password_reset_repo;
   infra::db::pg::PostgresUserRepository user_repo;
@@ -105,6 +107,16 @@ AuthInfraComponent::GetEmailVerificationRepository() noexcept {
 const services::ports::EmailVerificationRepository&
 AuthInfraComponent::GetEmailVerificationRepository() const noexcept {
   return impl_->email_verification_repo;
+}
+
+services::ports::SignUpAttemptRepository&
+AuthInfraComponent::GetSignUpAttemptRepository() noexcept {
+  return impl_->sign_up_attempt_repo;
+}
+
+const services::ports::SignUpAttemptRepository&
+AuthInfraComponent::GetSignUpAttemptRepository() const noexcept {
+  return impl_->sign_up_attempt_repo;
 }
 
 services::ports::SignInAttemptRepository&

@@ -95,7 +95,7 @@ dynamic-config-update-interval / dynamic-config-full-update-interval - polling c
 
 Runtime auth and outbox policies are modeled as typed userver dynamic configs:
 
-- `SMIRKLY_AUTH_RUNTIME_CONFIG` controls sign-in policy, sign-in rate limits, session activity write threshold, email verification code TTL, and verification rate limits.
+- `SMIRKLY_AUTH_RUNTIME_CONFIG` controls sign-up/sign-in rate limits, verified-email sign-in policy, session activity write threshold, email verification code TTL, and verification rate limits.
 - `SMIRKLY_EMAIL_OUTBOX_RUNTIME_CONFIG` controls outbox processing kill switch, batch size, max attempts, stuck timeout, and retry backoff.
 
 Local and docker development use the C++ defaults from `dynamic_config::Key`. Production should fetch those keys from config-service through `dynamic-config-client-updater` and keep `dynamic-config.fs-cache-path` available for fallback on restart. Thread counts, ports, DSNs, SMTP credentials, JWT key paths, and refresh token pepper are startup/runtime variables, not dynamic config. Change them through deployment config and a rolling restart.

@@ -1,6 +1,7 @@
 UPDATE email_outbox
 SET
     status       = 'dead',
+    payload      = '{}'::jsonb,
     locked_until = NULL,
     lease_id     = NULL,
     last_error   = $3,
