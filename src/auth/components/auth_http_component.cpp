@@ -4,46 +4,30 @@
 #include <userver/components/component_context.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
+#include <auth/config/auth_http_config.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
 
 namespace smirkly::auth::components {
-namespace {
-    infra::http::ClientIpExtractorConfig ParseClientIpConfig(
-        const userver::components::ComponentConfig &cfg
-    ) {
-        auto trusted_proxy_cidrs = cfg["trusted-proxy-cidrs"].As<std::vector<std::string>>(
-            std::vector<std::string>{"127.0.0.1/32", "::1/128"}
-        );
+struct AuthHttpComponent::Impl final {
+  infra::http::RequestMetaExtractor request_meta_extractor;
 
-        return infra::http::ClientIpExtractorConfig{
-            .trusted_proxy_cidrs = std::move(trusted_proxy_cidrs)
-        };
-    }
-}
+  explicit Impl(const userver::components::ComponentConfig& cfg)
+      : request_meta_extractor(config::ParseClientIpExtractorConfig(cfg)) {}
+};
 
-    struct AuthHttpComponent::Impl final {
-        infra::http::RequestMetaExtractor request_meta_extractor;
+AuthHttpComponent::AuthHttpComponent(
+    const userver::components::ComponentConfig& cfg,
+    const userver::components::ComponentContext& ctx)
+    : userver::components::LoggableComponentBase(cfg, ctx),
+      impl_(std::make_unique<Impl>(cfg)) {}
 
-        explicit Impl(const userver::components::ComponentConfig &cfg)
-            : request_meta_extractor(ParseClientIpConfig(cfg)) {
-        }
-    };
+AuthHttpComponent::~AuthHttpComponent() = default;
 
-    AuthHttpComponent::AuthHttpComponent(
-        const userver::components::ComponentConfig &cfg,
-        const userver::components::ComponentContext &ctx
-    )
-        : userver::components::LoggableComponentBase(cfg, ctx),
-          impl_(std::make_unique<Impl>(cfg)) {
-    }
+userver::yaml_config::Schema AuthHttpComponent::GetStaticConfigSchema() {
+  using userver::components::LoggableComponentBase;
+  using userver::yaml_config::MergeSchemas;
 
-    AuthHttpComponent::~AuthHttpComponent() = default;
-
-    userver::yaml_config::Schema AuthHttpComponent::GetStaticConfigSchema() {
-        using userver::components::LoggableComponentBase;
-        using userver::yaml_config::MergeSchemas;
-
-        return MergeSchemas<LoggableComponentBase>(R"(
+  return MergeSchemas<LoggableComponentBase>(R"(
 type: object
 description: Auth HTTP request metadata extraction config
 additionalProperties: false
@@ -58,13 +42,15 @@ properties:
       type: string
       description: Trusted proxy CIDR range
 )");
-    }
-
-    infra::http::RequestMetaExtractor &AuthHttpComponent::GetRequestMetaExtractor() noexcept {
-        return impl_->request_meta_extractor;
-    }
-
-    const infra::http::RequestMetaExtractor &AuthHttpComponent::GetRequestMetaExtractor() const noexcept {
-        return impl_->request_meta_extractor;
-    }
 }
+
+infra::http::RequestMetaExtractor&
+AuthHttpComponent::GetRequestMetaExtractor() noexcept {
+  return impl_->request_meta_extractor;
+}
+
+const infra::http::RequestMetaExtractor&
+AuthHttpComponent::GetRequestMetaExtractor() const noexcept {
+  return impl_->request_meta_extractor;
+}
+}  // namespace smirkly::auth::components

@@ -5,7 +5,7 @@ import uuid
 REFRESH_COOKIE_MAX_AGE_SECONDS = 2592000
 
 
-async def _create_signed_in_user(service_client):
+async def _create_signed_in_user(service_client, pgsql):
     suffix = uuid.uuid4().hex[:12]
     username = f"session_user_{suffix}"
     email = f"session-{suffix}@example.com"
@@ -20,6 +20,12 @@ async def _create_signed_in_user(service_client):
         },
     )
     assert sign_up_response.status == 201
+
+    cursor = pgsql["auth"].cursor()
+    cursor.execute(
+        "UPDATE users SET is_email_verified = TRUE WHERE username = %s",
+        (username,),
+    )
 
     sign_in_response = await service_client.post(
         "/auth/v0/sign-in",
@@ -44,8 +50,8 @@ async def _create_signed_in_user(service_client):
     }
 
 
-async def test_me_returns_current_user(service_client):
-    account = await _create_signed_in_user(service_client)
+async def test_me_returns_current_user(service_client, pgsql):
+    account = await _create_signed_in_user(service_client, pgsql)
 
     response = await service_client.get(
         "/auth/v0/me",
@@ -62,7 +68,7 @@ async def test_authenticated_request_updates_stale_session_last_used(
     service_client,
     pgsql,
 ):
-    account = await _create_signed_in_user(service_client)
+    account = await _create_signed_in_user(service_client, pgsql)
     cursor = pgsql["auth"].cursor()
     stale_last_used = datetime.now(timezone.utc) - timedelta(minutes=10)
 
@@ -91,8 +97,8 @@ async def test_authenticated_request_updates_stale_session_last_used(
     assert after_request > before_request
 
 
-async def test_sessions_list_and_revoke_current_session(service_client):
-    account = await _create_signed_in_user(service_client)
+async def test_sessions_list_and_revoke_current_session(service_client, pgsql):
+    account = await _create_signed_in_user(service_client, pgsql)
     headers = {"Authorization": f"Bearer {account['access_token']}"}
 
     sessions_response = await service_client.get(
@@ -120,8 +126,8 @@ async def test_sessions_list_and_revoke_current_session(service_client):
     assert me_after_revoke_response.status == 401
 
 
-async def test_refresh_rotates_session_and_detects_reuse(service_client):
-    account = await _create_signed_in_user(service_client)
+async def test_refresh_rotates_session_and_detects_reuse(service_client, pgsql):
+    account = await _create_signed_in_user(service_client, pgsql)
 
     refresh_response = await service_client.post(
         "/auth/v0/refresh",
@@ -158,6 +164,7 @@ async def test_refresh_rotates_session_and_detects_reuse(service_client):
         headers={"Cookie": account["refresh_cookie"]},
     )
     assert reuse_response.status == 401
+    assert reuse_response.json()["code"] == "auth.invalid_refresh_token"
 
     new_access_after_reuse_response = await service_client.get(
         "/auth/v0/me",
@@ -166,8 +173,8 @@ async def test_refresh_rotates_session_and_detects_reuse(service_client):
     assert new_access_after_reuse_response.status == 401
 
 
-async def test_logout_revokes_current_session_and_clears_refresh_cookie(service_client):
-    account = await _create_signed_in_user(service_client)
+async def test_logout_revokes_current_session_and_clears_refresh_cookie(service_client, pgsql):
+    account = await _create_signed_in_user(service_client, pgsql)
 
     logout_response = await service_client.post(
         "/auth/v0/logout",
@@ -190,8 +197,8 @@ async def test_logout_revokes_current_session_and_clears_refresh_cookie(service_
     assert refresh_after_logout_response.status == 401
 
 
-async def test_delete_sessions_revokes_all_user_sessions(service_client):
-    account = await _create_signed_in_user(service_client)
+async def test_delete_sessions_revokes_all_user_sessions(service_client, pgsql):
+    account = await _create_signed_in_user(service_client, pgsql)
 
     second_sign_in_response = await service_client.post(
         "/auth/v0/sign-in",
@@ -222,8 +229,8 @@ async def test_delete_sessions_revokes_all_user_sessions(service_client):
     assert second_me_response.status == 401
 
 
-async def test_change_password_revokes_sessions_and_accepts_new_password(service_client):
-    account = await _create_signed_in_user(service_client)
+async def test_change_password_revokes_sessions_and_accepts_new_password(service_client, pgsql):
+    account = await _create_signed_in_user(service_client, pgsql)
     new_password = "NewStrongPass123!"
 
     response = await service_client.post(

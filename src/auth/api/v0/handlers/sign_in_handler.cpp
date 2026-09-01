@@ -6,88 +6,81 @@
 #include <userver/server/http/http_response_cookie.hpp>
 
 #include <auth/api/v0/dto/sign_in_request.hpp>
+#include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
 #include <auth/infra/mapping/dto_mappers.hpp>
-#include <auth/services/errors/sign_in_errors.hpp>
-
+#include <auth/services/usecases/authentication_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
-    SignInHandler::SignInHandler(
-        const userver::components::ComponentConfig &config,
-        const userver::components::ComponentContext &context
-    )
-        : HttpHandlerJsonBase(config, context),
-          auth_service_(
-              context.FindComponent<smirkly::auth::components::AuthServiceComponent>().GetAuthService()
-          ),
-          request_meta_extractor_(
-              context.FindComponent<smirkly::auth::components::AuthHttpComponent>().GetRequestMetaExtractor()
-          ) {
+SignInHandler::SignInHandler(
+    const userver::components::ComponentConfig& config,
+    const userver::components::ComponentContext& context)
+    : HttpHandlerJsonBase(config, context),
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
+      request_meta_extractor_(
+          context.FindComponent<smirkly::auth::components::AuthHttpComponent>()
+              .GetRequestMetaExtractor()) {}
+
+SignInHandler::Value SignInHandler::HandleRequestJsonThrow(
+    const HttpRequest& request, const Value& body, RequestContext&) const {
+  dto::SignInRequest dto;
+  try {
+    dto = body.As<dto::SignInRequest>();
+  } catch (const std::exception&) {
+    return utils::BadRequestResponse(request, "auth.sign_in.validation_failed",
+                                     "invalid request body");
+  }
+
+  try {
+    const auto cmd = infra::mapping::ToDomain(dto);
+    const auto meta = request_meta_extractor_.Extract(request);
+
+    const auto result = authentication_service_.SignIn(cmd, meta);
+
+    userver::formats::json::ValueBuilder response;
+
+    response["user"]["id"] = result.user.id;
+    response["user"]["username"] = result.user.username;
+
+    if (result.user.email) {
+      response["user"]["email"] = *result.user.email;
+    } else {
+      response["user"]["email"] = nullptr;
     }
 
-    SignInHandler::Value SignInHandler::HandleRequestJsonThrow(
-        const HttpRequest &request,
-        const Value &body,
-        RequestContext &
-    ) const {
-        try {
-            const auto dto = body.As<dto::SignInRequest>();
-            const auto cmd = infra::mapping::ToDomain(dto);
-            const auto meta = request_meta_extractor_.Extract(request);
-
-            const auto result = auth_service_.SignIn(cmd, meta);
-
-            userver::formats::json::ValueBuilder response;
-
-            response["user"]["id"] = result.user.id;
-            response["user"]["username"] = result.user.username;
-
-            if (result.user.email) {
-                response["user"]["email"] = *result.user.email;
-            } else {
-                response["user"]["email"] = nullptr;
-            }
-
-            if (result.user.phone) {
-                response["user"]["phone"] = *result.user.phone;
-            } else {
-                response["user"]["phone"] = nullptr;
-            }
-
-            response["user"]["is_email_verified"] = result.user.is_email_verified;
-            response["user"]["is_phone_verified"] = result.user.is_phone_verified;
-
-            response["session_id"] = result.session_id;
-            response["tokens"]["access_token"] = result.tokens.access_token;
-
-            request.GetHttpResponse().SetCookie(
-                userver::server::http::Cookie("refresh_token", result.tokens.refresh_token)
-                .SetHttpOnly()
-                .SetSecure()
-                .SetPath("/auth/v0/refresh")
-                .SetSameSite("Strict")
-                .SetMaxAge(result.refresh_token_max_age)
-            );
-
-            request.GetHttpResponse().SetHeader(
-                std::string_view{"X-Service-Name"},
-                std::string{"smirkly-auth"}
-            );
-
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
-            return response.ExtractValue();
-        } catch (const services::errors::SignInValidation &e) {
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kBadRequest);
-            return utils::ErrorResponse("auth.sign_in.validation_failed", e.what());
-        } catch (const services::errors::InvalidCredentials &) {
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kUnauthorized);
-            return utils::ErrorResponse("auth.invalid_credentials", "invalid credentials");
-        } catch (const services::errors::EmailNotVerified &) {
-            request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kForbidden);
-            return utils::ErrorResponse("auth.email_not_verified", "email is not verified");
-        }
+    if (result.user.phone) {
+      response["user"]["phone"] = *result.user.phone;
+    } else {
+      response["user"]["phone"] = nullptr;
     }
+
+    response["user"]["is_email_verified"] = result.user.is_email_verified;
+    response["user"]["is_phone_verified"] = result.user.is_phone_verified;
+
+    response["session_id"] = result.session_id;
+    response["tokens"]["access_token"] = result.tokens.access_token;
+
+    request.GetHttpResponse().SetCookie(
+        userver::server::http::Cookie("refresh_token",
+                                      result.tokens.refresh_token)
+            .SetHttpOnly()
+            .SetSecure()
+            .SetPath("/auth/v0/refresh")
+            .SetSameSite("Strict")
+            .SetMaxAge(result.refresh_token_max_age));
+
+    request.GetHttpResponse().SetHeader(std::string_view{"X-Service-Name"},
+                                        std::string{"smirkly-auth"});
+
+    request.GetHttpResponse().SetStatus(userver::server::http::HttpStatus::kOk);
+    return response.ExtractValue();
+  } catch (const std::exception& e) {
+    return utils::AuthErrorResponse(request, e);
+  }
 }
+}  // namespace smirkly::auth::api::v0::handlers

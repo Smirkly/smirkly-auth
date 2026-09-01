@@ -1,0 +1,32 @@
+event-threads: 2
+worker-threads: 4
+worker-monitor-threads: 1
+worker-fs-threads: 2
+worker-email-outbox-threads: 2
+logger-level: info
+
+is-testing: false
+
+server-port: 8080
+monitor-server-port: 8081
+dynamic-config-updates-enabled: false
+dynamic-config-cache-path: /tmp/smirkly-auth-dynamic-config-cache.json
+dynamic-config-server-url: http://localhost:8083/
+dynamic-config-service-name: smirkly-auth
+dynamic-config-update-interval: 5s
+dynamic-config-full-update-interval: 1m
+postgres-dbconnection: postgresql://smirkly_auth:smirkly_auth@smirkly-postgres:5432/smirkly_auth
+
+AUTH_JWT_AUDIENCE: smirkly-api
+AUTH_JWT_KEY_ID: smirkly-auth-docker-rs256
+AUTH_JWT_PRIVATE_KEY_PATH: ./configs/secrets/auth_jwt_private.pem
+AUTH_JWT_PUBLIC_KEY_PATH: ./configs/secrets/auth_jwt_public.pem
+AUTH_REFRESH_TOKEN_PEPPER: local-dev-refresh-token-pepper-change-me
+
+AUTH_SMTP_HOST: smtp.localhost
+AUTH_SMTP_PORT: 587
+AUTH_SMTP_TLS_MODE: starttls
+AUTH_SMTP_USERNAME: local-dev-user
+AUTH_SMTP_APP_PASSWORD: local-dev-password
+AUTH_SMTP_FROM_EMAIL: no-reply@localhost
+AUTH_SMTP_FROM_NAME: Smirkly

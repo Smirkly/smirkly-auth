@@ -20,6 +20,7 @@ Testing/
 
 .idea/
 .vscode/
+.codex/
 !.vscode/c_cpp_properties.json
 !.vscode/cmake-variants.yaml
 !.vscode/README.md
@@ -27,7 +28,12 @@ Testing/
 .env
 *.env.*
 config_vars.yaml
+configs/config_vars.local.yaml
+configs/config_vars.docker.yaml
+configs/config_vars.prod.yaml
 dynamic_config.json
+configs/dynamic_config/*.local.json
+configs/dynamic_config/*.prod.json
 configs/secrets/
 
 logs/

@@ -4,28 +4,44 @@
 #include <userver/components/component_list.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/congestion_control/component.hpp>
+#include <userver/dynamic_config/client/component.hpp>
+#include <userver/dynamic_config/updater/component.hpp>
+#include <userver/server/handlers/dns_client_control.hpp>
+#include <userver/server/handlers/dynamic_debug_log.hpp>
+#include <userver/server/handlers/inspect_requests.hpp>
+#include <userver/server/handlers/log_level.hpp>
+#include <userver/server/handlers/on_log_rotate.hpp>
+#include <userver/server/handlers/server_monitor.hpp>
+#if SMIRKLY_AUTH_ENABLE_PUBLIC_PING
 #include <userver/server/handlers/ping.hpp>
+#endif
+#if SMIRKLY_AUTH_ENABLE_TEST_CONTROL
 #include <userver/server/handlers/tests_control.hpp>
+#endif
 #include <userver/storages/postgres/component.hpp>
 #include <userver/testsuite/testsuite_support.hpp>
 #include <userver/utils/daemon_run.hpp>
 
-#include <auth/api/v0/handlers/jwks_handler.hpp>
+#include <auth/api/health/liveness_handler.hpp>
+#include <auth/api/health/readiness_handler.hpp>
 #include <auth/api/v0/handlers/change_password_handler.hpp>
+#include <auth/api/v0/handlers/jwks_handler.hpp>
 #include <auth/api/v0/handlers/logout_handler.hpp>
 #include <auth/api/v0/handlers/me_handler.hpp>
+#include <auth/api/v0/handlers/password_reset_confirm_handler.hpp>
+#include <auth/api/v0/handlers/password_reset_request_handler.hpp>
 #include <auth/api/v0/handlers/refresh_token_handler.hpp>
 #include <auth/api/v0/handlers/resend_email_verification_handler.hpp>
 #include <auth/api/v0/handlers/session_revoke_handler.hpp>
-#include <auth/api/v0/handlers/sessions_revoke_all_handler.hpp>
 #include <auth/api/v0/handlers/sessions_handler.hpp>
+#include <auth/api/v0/handlers/sessions_revoke_all_handler.hpp>
 #include <auth/api/v0/handlers/sign_in_handler.hpp>
 #include <auth/api/v0/handlers/sign_up_handler.hpp>
 #include <auth/api/v0/handlers/verify_email_handler.hpp>
-#include <auth/components/auth_infra_component.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
+#include <auth/components/auth_infra_component.hpp>
 #include <auth/components/auth_security_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/components/email_outbox_worker_component.hpp>
 
 int main(int argc, char* argv[]) {
@@ -36,17 +52,37 @@ int main(int argc, char* argv[]) {
           .Append<userver::components::HttpClientCore>()
           .Append<userver::clients::http::MiddlewarePipelineComponent>()
           .Append<userver::components::HttpClient>()
+          .Append<userver::components::DynamicConfigClient>()
+          .Append<userver::components::DynamicConfigClientUpdater>()
+#if SMIRKLY_AUTH_ENABLE_PUBLIC_PING
+          .Append<userver::server::handlers::Ping>()
+#endif
+          .Append<userver::server::handlers::ServerMonitor>()
+          .Append<userver::server::handlers::LogLevel>()
+          .Append<userver::server::handlers::DynamicDebugLog>()
+          .Append<userver::server::handlers::InspectRequests>()
+          .Append<userver::server::handlers::DnsClientControl>()
+          .Append<userver::server::handlers::OnLogRotate>()
           .Append<userver::components::TestsuiteSupport>()
+#if SMIRKLY_AUTH_ENABLE_TEST_CONTROL
           .Append<userver::server::handlers::TestsControl>()
+#endif
           .Append<userver::congestion_control::Component>()
           .Append<smirkly::auth::components::AuthInfraComponent>()
           .Append<smirkly::auth::components::AuthHttpComponent>()
           .Append<smirkly::auth::components::AuthSecurityComponent>()
           .Append<smirkly::auth::components::EmailOutboxWorkerComponent>()
-          .Append<smirkly::auth::components::AuthServiceComponent>()
+          .Append<smirkly::auth::components::AuthApplicationComponent>()
+          .Append<smirkly::auth::api::health::LivenessHandler>()
+          .Append<smirkly::auth::api::health::ReadinessHandler>()
           .Append<smirkly::auth::api::v0::handlers::SignUpHandler>()
           .Append<smirkly::auth::api::v0::handlers::VerifyEmailHandler>()
-          .Append<smirkly::auth::api::v0::handlers::ResendEmailVerificationHandler>()
+          .Append<smirkly::auth::api::v0::handlers::
+                      ResendEmailVerificationHandler>()
+          .Append<
+              smirkly::auth::api::v0::handlers::PasswordResetRequestHandler>()
+          .Append<
+              smirkly::auth::api::v0::handlers::PasswordResetConfirmHandler>()
           .Append<smirkly::auth::api::v0::handlers::SignInHandler>()
           .Append<smirkly::auth::api::v0::handlers::RefreshHandler>()
           .Append<smirkly::auth::api::v0::handlers::LogoutHandler>()

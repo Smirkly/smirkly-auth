@@ -2,31 +2,30 @@
 
 #include <userver/server/handlers/http_handler_json_base.hpp>
 
-#include <auth/services/usecases/auth_service.hpp>
-
 namespace smirkly::auth::infra::http {
-    class RequestMetaExtractor;
+class RequestMetaExtractor;
+}
+
+namespace smirkly::auth::services::usecases {
+class AuthenticationService;
 }
 
 namespace smirkly::auth::api::v0::handlers {
-    class SignInHandler final : public userver::server::handlers::HttpHandlerJsonBase {
-    public:
-        static constexpr std::string_view kName = "handler-auth-sign-in";
+class SignInHandler final
+    : public userver::server::handlers::HttpHandlerJsonBase {
+ public:
+  static constexpr std::string_view kName = "handler-auth-sign-in";
 
-        //using HttpHandlerJsonBase::HttpHandlerJsonBase;
+  // using HttpHandlerJsonBase::HttpHandlerJsonBase;
 
-        SignInHandler(const userver::components::ComponentConfig &config,
-                      const userver::components::ComponentContext &context);
+  SignInHandler(const userver::components::ComponentConfig& config,
+                const userver::components::ComponentContext& context);
 
-        Value
-        HandleRequestJsonThrow(
-            const HttpRequest &request,
-            const Value &body,
-            RequestContext &context
-        ) const override;
+  Value HandleRequestJsonThrow(const HttpRequest& request, const Value& body,
+                               RequestContext& context) const override;
 
-    private:
-        smirkly::auth::services::usecases::AuthService &auth_service_;
-        smirkly::auth::infra::http::RequestMetaExtractor &request_meta_extractor_;
-    };
-}
+ private:
+  services::usecases::AuthenticationService& authentication_service_;
+  smirkly::auth::infra::http::RequestMetaExtractor& request_meta_extractor_;
+};
+}  // namespace smirkly::auth::api::v0::handlers

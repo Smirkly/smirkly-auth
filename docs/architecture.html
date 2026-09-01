@@ -39,7 +39,7 @@
           <h2>Layering</h2>
           <pre><code>HTTP handlers
   -> DTO parsing and response mapping
-  -> AuthService use cases
+  -> Application services / use cases
   -> Repository / security / messaging ports
   -> Postgres, JWT, bcrypt, SMTP, UUID providers</code></pre>
 
@@ -54,8 +54,24 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><code>AuthService</code></td>
-                  <td>Coordinates sign-up, verification, sign-in, refresh, session revocation, and password changes.</td>
+                  <td><code>IdentityService</code></td>
+                  <td>Owns registration, email verification and resend, and current-user lookup.</td>
+                </tr>
+                <tr>
+                  <td><code>AuthenticationService</code></td>
+                  <td>Owns credential authentication, token issuance and rotation, and access-token validation.</td>
+                </tr>
+                <tr>
+                  <td><code>SessionService</code></td>
+                  <td>Lists and revokes the authenticated user's sessions.</td>
+                </tr>
+                <tr>
+                  <td><code>PasswordService</code></td>
+                  <td>Owns authenticated password changes and the complete password-reset lifecycle.</td>
+                </tr>
+                <tr>
+                  <td><code>AuthApplicationComponent</code></td>
+                  <td>Constructs the four application services and exposes them to userver HTTP handlers.</td>
                 </tr>
                 <tr>
                   <td><code>JwtTokenProvider</code></td>
@@ -77,7 +93,7 @@
           <ul>
             <li>Access tokens are RS256 JWTs with short TTL.</li>
             <li>Refresh tokens are RS256 JWTs delivered through the <code>refresh_token</code> HttpOnly Secure cookie.</li>
-            <li>Only refresh-token hashes are stored in Postgres.</li>
+            <li>Only refresh-token HMAC-SHA256 hashes with a server-side pepper are stored in Postgres.</li>
             <li>Refresh rotates into a new session id while preserving the token family id.</li>
             <li>Detected refresh-token reuse revokes the whole token family.</li>
           </ul>
@@ -91,16 +107,23 @@
 
           <h2>Password Change</h2>
           <p>
-            Password changes verify the current password, validate the new password with the same
-            policy used at sign-up, update the password hash, and revoke all active sessions for the
+            <code>PasswordService</code> verifies the current password, validates the new password with the same
+            policy used at sign-up, updates the password hash, and revokes all active sessions for the
             user. The client must sign in again after a successful password change.
+          </p>
+
+          <h2>Password Reset</h2>
+          <p>
+            <code>PasswordService</code> owns both reset request and confirmation because they
+            share one token lifecycle and rate-limit policy. Raw reset tokens are sent through the
+            email outbox, only hashes are stored, and a successful reset revokes all active sessions.
           </p>
 
           <h2>Email Verification</h2>
           <p>
             Sign-up stores only a hash of the verification code and writes a pending email job into
             the outbox in the same transaction. The outbox worker runs on its own task processor,
-            claims jobs with row locking, sends them through SMTP, retries transient failures, and
+            claims jobs with an ownership lease and row locking, sends them through SMTP, retries transient failures, and
             clears sensitive sent payloads. Resend requests close any previous active verification
             record for the user before creating and queueing a fresh code, so only the latest active
             code can be accepted.

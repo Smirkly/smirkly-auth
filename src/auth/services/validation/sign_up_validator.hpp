@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -9,33 +8,26 @@
 #include <auth/domain/value_objects/phone.hpp>
 #include <auth/domain/value_objects/username.hpp>
 #include <auth/services/contracts/sign_up.hpp>
+#include <auth/services/policies/sign_up_policy.hpp>
+#include <auth/services/validation/password_validator.hpp>
 
 namespace smirkly::auth::services::validation {
-    struct SignUpPolicy final {
-        std::size_t password_min_len{8};
-        std::size_t password_max_len{72};
+struct NormalizedSignUpInput final {
+  domain::value_objects::Username username;
+  std::string password;
+  std::optional<domain::value_objects::Email> email;
+  std::optional<domain::value_objects::Phone> phone;
+};
 
-        bool require_email{false};
-        bool require_phone{false};
-        bool require_contact{true};
-    };
+class SignUpValidator final {
+ public:
+  explicit SignUpValidator(policies::SignUpPolicy policy = {});
 
-    struct NormalizedSignUpInput final {
-        domain::value_objects::Username username;
-        std::string password;
-        std::optional<domain::value_objects::Email> email;
-        std::optional<domain::value_objects::Phone> phone;
-    };
+  [[nodiscard]] NormalizedSignUpInput ValidateAndNormalize(
+      const contracts::SignUpCommand& cmd) const;
 
-    class SignUpValidator final {
-    public:
-        explicit SignUpValidator(SignUpPolicy policy = {});
-
-        [[nodiscard]] NormalizedSignUpInput ValidateAndNormalize(const contracts::SignUpCommand &cmd) const;
-
-        void ValidatePassword(std::string_view password) const;
-
-    private:
-        SignUpPolicy policy_;
-    };
-}
+ private:
+  policies::SignUpPolicy policy_;
+  PasswordValidator password_validator_;
+};
+}  // namespace smirkly::auth::services::validation

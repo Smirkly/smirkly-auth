@@ -1,34 +1,31 @@
 cmake_minimum_required(VERSION 3.12...3.31)
 project(smirkly-auth CXX)
 
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadUserver)
 include(DownloadLibcurl)
-
-if (EXISTS "/opt/homebrew/bin/python3.12")
-    set(USERVER_PYTHON "/opt/homebrew/bin/python3.12"
-            CACHE FILEPATH "Python for userver venvs")
-    set(USERVER_PYTHON_PATH "/opt/homebrew/bin/python3.12"
-            CACHE FILEPATH "Python executable for userver venvs")
-endif ()
 
 set(USERVER_FEATURE_POSTGRESQL ON)
 set(USERVER_FEATURE_PATCH_LIBPQ OFF)
 
 find_package(
-        userver
+        userver 3.0 EXACT
         COMPONENTS core postgresql
         QUIET
 )
 if (NOT userver_FOUND)
     # Tries TRY_DIR first, falls back to downloading userver from GitHub using CPM.
-    download_userver(TRY_DIR third_party/userver)
+    download_userver(TRY_DIR third_party/userver GIT_TAG v3.0)
 endif ()
 
 find_package(CURL QUIET)
 if (NOT CURL_FOUND)
     download_libcurl(TRY_DIR third_party/libcurl)
 endif()
+
+find_package(OpenSSL REQUIRED Crypto)
 
 userver_setup_environment()
 
@@ -49,13 +46,20 @@ userver_add_sql_library(
         SQL_FILES
         read/devices/*.sql
         read/email_outbox/*.sql
+        read/password_resets/*.sql
+        read/sign_in_attempts/*.sql
         read/email_verifications/email_verification_attempts_count_recent.sql
         read/email_verifications/email_verifications_find_active_by_user_id.sql
         read/sessions/*.sql
         read/users/*.sql
         write/devices/*.sql
         write/email_outbox/*.sql
+        write/password_resets/*.sql
+        write/sign_in_attempts/*.sql
+        write/sign_up_attempts/*.sql
         write/email_verifications/email_verification_attempts_insert.sql
+        write/email_verifications/email_verification_attempts_lock_scopes.sql
+        write/email_verifications/email_verification_attempts_try_record.sql
         write/email_verifications/email_verifications_increment_attempts.sql
         write/email_verifications/email_verifications_insert.sql
         write/email_verifications/email_verifications_mark_active_used_by_user_id.sql
@@ -80,6 +84,7 @@ add_library(
         ${PROJECT_NAME}_objs OBJECT
         ${PROJECT_SOURCES}
 )
+target_compile_features(${PROJECT_NAME}_objs PUBLIC cxx_std_20)
 target_link_libraries(
         ${PROJECT_NAME}_objs
         PUBLIC
@@ -88,12 +93,21 @@ target_link_libraries(
         ${PROJECT_NAME}_sql
         bcrypt
         CURL::libcurl
+        OpenSSL::Crypto
         cpp-jwt
 )
 
 
+option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" ON)
+option(SMIRKLY_AUTH_ENABLE_TEST_CONTROL "Enable runtime tests-control component" OFF)
+option(SMIRKLY_AUTH_ENABLE_PUBLIC_PING "Enable public /ping handler" ON)
+
 # The Service
 add_executable(${PROJECT_NAME} src/main.cpp)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        SMIRKLY_AUTH_ENABLE_TEST_CONTROL=$<BOOL:${SMIRKLY_AUTH_ENABLE_TEST_CONTROL}>
+        SMIRKLY_AUTH_ENABLE_PUBLIC_PING=$<BOOL:${SMIRKLY_AUTH_ENABLE_PUBLIC_PING}>
+)
 target_link_libraries(${PROJECT_NAME} PRIVATE
         ${PROJECT_NAME}_objs
 )
@@ -128,8 +142,6 @@ if (PROJECT_BENCH_SOURCES)
 endif ()
 
 # Functional testing
-option(SMIRKLY_AUTH_ENABLE_TESTSUITE "Enable userver testsuite target" ON)
-
 if (SMIRKLY_AUTH_ENABLE_TESTSUITE)
     set(SMIRKLY_AUTH_TESTSUITE_ARGS
             SERVICE_TARGET ${PROJECT_NAME}
@@ -157,7 +169,9 @@ if (DEFINED ENV{PREFIX})
     set(CMAKE_INSTALL_PREFIX "${PREFIX_PATH}")
 endif ()
 
-file(GLOB CONFIGS_FILES ${CMAKE_CURRENT_SOURCE_DIR}/configs/*.yaml ${CMAKE_CURRENT_SOURCE_DIR}/configs/*.json)
+set(CONFIGS_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/configs/static_config.prod.yaml
+)
 
 install(
         TARGETS ${PROJECT_NAME}

@@ -5,60 +5,63 @@
 
 #include <userver/utils/periodic_task.hpp>
 
+#include <auth/infra/workers/email_outbox_runtime_config.hpp>
+#include <auth/infra/workers/email_outbox_runtime_config_provider.hpp>
+
 namespace userver::engine {
-    class TaskProcessor;
+class TaskProcessor;
 }
 
 namespace smirkly::auth::services::ports {
-    class TransactionManager;
-    class EmailOutboxRepository;
-    class EmailVerificationSender;
-}
+class TransactionManager;
+class EmailOutboxRepository;
+class EmailVerificationSender;
+}  // namespace smirkly::auth::services::ports
+
+namespace smirkly::auth::services::ports::observability {
+class EmailOutboxMetrics;
+}  // namespace smirkly::auth::services::ports::observability
 
 namespace smirkly::auth::infra::workers {
-    struct EmailOutboxProcessorConfig {
-        bool enabled{true};
-        std::chrono::milliseconds poll_interval{1000};
-        std::size_t batch_size{20};
+struct EmailOutboxWorkerStaticConfig final {
+  bool enabled{true};
+  std::chrono::milliseconds poll_interval{1000};
+};
 
-        std::size_t max_attempts{10};
-        std::chrono::seconds stuck_timeout{300};
+class EmailOutboxProcessor final {
+ public:
+  EmailOutboxProcessor(
+      services::ports::TransactionManager& tx_manager,
+      services::ports::EmailOutboxRepository& outbox_repo,
+      services::ports::EmailVerificationSender& sender,
+      userver::engine::TaskProcessor& task_processor,
+      EmailOutboxWorkerStaticConfig static_config,
+      const EmailOutboxRuntimeConfigProvider& runtime_config_provider,
+      services::ports::observability::EmailOutboxMetrics& metrics);
 
-        std::chrono::seconds retry_base_delay{2};
-        std::chrono::seconds retry_max_delay{600};
-    };
+  ~EmailOutboxProcessor();
 
-    class EmailOutboxProcessor final {
-    public:
-        EmailOutboxProcessor(services::ports::TransactionManager &tx_manager,
-                             services::ports::EmailOutboxRepository &outbox_repo,
-                             services::ports::EmailVerificationSender &sender,
-                             userver::engine::TaskProcessor &task_processor,
-                             EmailOutboxProcessorConfig cfg);
+  EmailOutboxProcessor(const EmailOutboxProcessor&) = delete;
 
-        ~EmailOutboxProcessor();
+  EmailOutboxProcessor& operator=(const EmailOutboxProcessor&) = delete;
 
-        EmailOutboxProcessor(const EmailOutboxProcessor &) = delete;
+  void Start();
 
-        EmailOutboxProcessor &operator=(const EmailOutboxProcessor &) = delete;
+  void Stop() noexcept;
 
-        void Start();
+ private:
+  void Tick();
 
-        void Stop() noexcept;
+ private:
+  services::ports::TransactionManager& tx_manager_;
+  services::ports::EmailOutboxRepository& outbox_repo_;
+  services::ports::EmailVerificationSender& sender_;
+  userver::engine::TaskProcessor& task_processor_;
 
-    private:
-        void Tick();
-
-        std::chrono::seconds ComputeRetryDelay(std::size_t attempt) const;
-
-    private:
-        services::ports::TransactionManager &tx_manager_;
-        services::ports::EmailOutboxRepository &outbox_repo_;
-        services::ports::EmailVerificationSender &sender_;
-        userver::engine::TaskProcessor &task_processor_;
-
-        EmailOutboxProcessorConfig cfg_;
-        userver::utils::PeriodicTask task_;
-        bool started_{false};
-    };
-}
+  EmailOutboxWorkerStaticConfig static_config_;
+  const EmailOutboxRuntimeConfigProvider& runtime_config_provider_;
+  services::ports::observability::EmailOutboxMetrics& metrics_;
+  userver::utils::PeriodicTask task_;
+  bool started_{false};
+};
+}  // namespace smirkly::auth::infra::workers

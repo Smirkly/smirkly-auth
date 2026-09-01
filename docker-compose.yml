@@ -2,7 +2,7 @@ x-auth-build: &auth-build
   context: .
   dockerfile: Dockerfile
   args:
-    USERVER_IMAGE: ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-24.04-userver:latest}
+    USERVER_IMAGE: ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-24.04-userver:v3.0@sha256:3477357e5d6b874d69676b38d084dc153097c9d7a85f09fb5b059427dcfee990}
     MIGRATE_IMAGE: ${MIGRATE_IMAGE:-migrate/migrate:v4.19.1}
 
 x-migrate-command: &migrate-command
@@ -70,7 +70,7 @@ services:
       - bash
       - -lc
       - |
-        cmake --preset debug -DUSERVER_PYTHON=/usr/bin/python3
+        cmake --preset debug
         cmake --build build-debug --parallel --target smirkly-auth
         ./build-debug/smirkly-auth --config ./configs/static_config.yaml
 
@@ -100,10 +100,13 @@ services:
     container_name: smirkly-auth
     restart: unless-stopped
     volumes:
-      - ./configs/config_vars.docker.yaml:/app/configs/config_vars.yaml:ro
-      - ./configs/secrets:/app/configs/secrets:ro
+      - ${SMIRKLY_CONFIG_VARS_PATH:-./configs/config_vars.prod.yaml}:/app/configs/config_vars.yaml:ro
+      - ${SMIRKLY_SECRETS_PATH:-./configs/secrets}:/app/configs/secrets:ro
+      - auth-dynamic-config:/var/cache/smirkly-auth
 
 volumes:
   pgdata:
   auth-build-debug:
+  auth-build-release:
   auth-ccache:
+  auth-dynamic-config:
