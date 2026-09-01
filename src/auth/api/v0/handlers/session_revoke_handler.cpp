@@ -6,15 +6,21 @@
 #include <auth/api/v0/auth/bearer_token.hpp>
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
-#include <auth/components/auth_service_component.hpp>
+#include <auth/components/auth_application_component.hpp>
+#include <auth/services/usecases/authentication_service.hpp>
+#include <auth/services/usecases/session_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 SessionRevokeHandler::SessionRevokeHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(context.FindComponent<components::AuthServiceComponent>()
-                        .GetAuthService()) {}
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
+      session_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetSessionService()) {}
 
 SessionRevokeHandler::Value SessionRevokeHandler::HandleRequestJsonThrow(
     const HttpRequest& request, const Value&, RequestContext&) const {
@@ -27,8 +33,9 @@ SessionRevokeHandler::Value SessionRevokeHandler::HandleRequestJsonThrow(
   }
 
   try {
-    const auto context = auth_service_.AuthenticateAccessToken(*access_token);
-    auth_service_.RevokeSession(context, request.GetPathArg("session_id"));
+    const auto context =
+        authentication_service_.AuthenticateAccessToken(*access_token);
+    session_service_.RevokeSession(context, request.GetPathArg("session_id"));
 
     request.GetHttpResponse().SetStatus(
         userver::server::http::HttpStatus::kNoContent);

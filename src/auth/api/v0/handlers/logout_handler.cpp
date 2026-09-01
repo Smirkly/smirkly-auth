@@ -9,7 +9,9 @@
 #include <auth/api/v0/auth/bearer_token.hpp>
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
-#include <auth/components/auth_service_component.hpp>
+#include <auth/components/auth_application_component.hpp>
+#include <auth/services/usecases/authentication_service.hpp>
+#include <auth/services/usecases/session_service.hpp>
 
 namespace {
 void ClearRefreshCookie(const userver::server::http::HttpRequest& request) {
@@ -28,8 +30,12 @@ LogoutHandler::LogoutHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(context.FindComponent<components::AuthServiceComponent>()
-                        .GetAuthService()) {}
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
+      session_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetSessionService()) {}
 
 LogoutHandler::Value LogoutHandler::HandleRequestJsonThrow(
     const HttpRequest& request, const Value&, RequestContext&) const {
@@ -44,8 +50,9 @@ LogoutHandler::Value LogoutHandler::HandleRequestJsonThrow(
   }
 
   try {
-    const auto context = auth_service_.AuthenticateAccessToken(*access_token);
-    auth_service_.RevokeCurrentSession(context);
+    const auto context =
+        authentication_service_.AuthenticateAccessToken(*access_token);
+    session_service_.RevokeCurrentSession(context);
 
     request.GetHttpResponse().SetStatus(
         userver::server::http::HttpStatus::kNoContent);

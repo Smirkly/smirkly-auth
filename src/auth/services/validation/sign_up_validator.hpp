@@ -9,6 +9,7 @@
 #include <auth/domain/value_objects/username.hpp>
 #include <auth/services/contracts/sign_up.hpp>
 #include <auth/services/policies/sign_up_policy.hpp>
+#include <auth/services/validation/password_validator.hpp>
 
 namespace smirkly::auth::services::validation {
 struct NormalizedSignUpInput final {
@@ -25,9 +26,8 @@ class SignUpValidator final {
   [[nodiscard]] NormalizedSignUpInput ValidateAndNormalize(
       const contracts::SignUpCommand& cmd) const;
 
-  void ValidatePassword(std::string_view password) const;
-
  private:
   policies::SignUpPolicy policy_;
+  PasswordValidator password_validator_;
 };
 }  // namespace smirkly::auth::services::validation

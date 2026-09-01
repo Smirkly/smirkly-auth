@@ -2,10 +2,12 @@
 
 #include <userver/server/handlers/http_handler_json_base.hpp>
 
-#include <auth/services/usecases/auth_service.hpp>
-
 namespace smirkly::auth::infra::http {
 class RequestMetaExtractor;
+}
+
+namespace smirkly::auth::services::usecases {
+class PasswordService;
 }
 
 namespace smirkly::auth::api::v0::handlers {
@@ -24,7 +26,7 @@ class PasswordResetRequestHandler final
                                RequestContext& context) const override;
 
  private:
-  services::usecases::AuthService& auth_service_;
+  services::usecases::PasswordService& password_service_;
   infra::http::RequestMetaExtractor& request_meta_extractor_;
 };
 

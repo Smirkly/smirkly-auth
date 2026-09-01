@@ -38,10 +38,10 @@
 #include <auth/api/v0/handlers/sign_in_handler.hpp>
 #include <auth/api/v0/handlers/sign_up_handler.hpp>
 #include <auth/api/v0/handlers/verify_email_handler.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
 #include <auth/components/auth_infra_component.hpp>
 #include <auth/components/auth_security_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/components/email_outbox_worker_component.hpp>
 
 int main(int argc, char* argv[]) {
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
           .Append<smirkly::auth::components::AuthHttpComponent>()
           .Append<smirkly::auth::components::AuthSecurityComponent>()
           .Append<smirkly::auth::components::EmailOutboxWorkerComponent>()
-          .Append<smirkly::auth::components::AuthServiceComponent>()
+          .Append<smirkly::auth::components::AuthApplicationComponent>()
           .Append<smirkly::auth::api::health::LivenessHandler>()
           .Append<smirkly::auth::api::health::ReadinessHandler>()
           .Append<smirkly::auth::api::v0::handlers::SignUpHandler>()

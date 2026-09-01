@@ -7,19 +7,19 @@
 
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
+#include <auth/services/usecases/authentication_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 RefreshHandler::RefreshHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(
-          context
-              .FindComponent<smirkly::auth::components::AuthServiceComponent>()
-              .GetAuthService()),
+      authentication_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetAuthenticationService()),
       request_meta_extractor_(
           context.FindComponent<smirkly::auth::components::AuthHttpComponent>()
               .GetRequestMetaExtractor()) {}
@@ -40,7 +40,7 @@ RefreshHandler::Value RefreshHandler::HandleRequestJsonThrow(
     const services::contracts::RefreshCommand cmd = {
         .refresh_token = std::string{refresh_token}};
 
-    const auto result = auth_service_.Refresh(cmd, meta);
+    const auto result = authentication_service_.Refresh(cmd, meta);
 
     request.GetHttpResponse().SetCookie(
         userver::server::http::Cookie("refresh_token", result.refresh_token)

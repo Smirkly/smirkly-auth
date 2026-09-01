@@ -8,10 +8,11 @@
 #include <auth/api/v0/utils/auth_error_mapper.hpp>
 #include <auth/api/v0/utils/json_error.hpp>
 #include <auth/api/v0/utils/json_request.hpp>
+#include <auth/components/auth_application_component.hpp>
 #include <auth/components/auth_http_component.hpp>
-#include <auth/components/auth_service_component.hpp>
 #include <auth/infra/http/request_meta_extractor.hpp>
 #include <auth/services/contracts/password_reset.hpp>
+#include <auth/services/usecases/password_service.hpp>
 
 namespace smirkly::auth::api::v0::handlers {
 namespace {
@@ -27,8 +28,9 @@ PasswordResetConfirmHandler::PasswordResetConfirmHandler(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : HttpHandlerJsonBase(config, context),
-      auth_service_(context.FindComponent<components::AuthServiceComponent>()
-                        .GetAuthService()),
+      password_service_(
+          context.FindComponent<components::AuthApplicationComponent>()
+              .GetPasswordService()),
       request_meta_extractor_(
           context.FindComponent<components::AuthHttpComponent>()
               .GetRequestMetaExtractor()) {}
@@ -59,7 +61,7 @@ PasswordResetConfirmHandler::HandleRequestJsonThrow(const HttpRequest& request,
   }
 
   try {
-    auth_service_.ConfirmPasswordReset(
+    password_service_.ConfirmReset(
         services::contracts::ConfirmPasswordResetCommand{
             .email = *email,
             .token = *token,
