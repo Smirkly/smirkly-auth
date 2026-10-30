@@ -154,7 +154,7 @@ UTEST(AuthenticationServiceSignIn,
                        .username = "unit_user",
                        .email = std::nullopt,
                        .phone = std::nullopt,
-                       .password = std::string(73, 'a'),
+                       .password = std::string(257, 'a'),
                    })),
                errors::SignInValidation);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include <auth/services/contracts/auth_context.hpp>
 #include <auth/services/contracts/change_password.hpp>
 #include <auth/services/contracts/password_reset.hpp>
@@ -56,6 +58,7 @@ class PasswordService final {
   ports::security::TokenGenerator& reset_token_generator_;
   policies::PasswordResetPolicy password_reset_policy_;
   const ports::config::AuthRuntimePolicyProvider* runtime_policy_provider_;
+  std::size_t max_password_length_;
   validation::PasswordValidator password_validator_;
 };
 

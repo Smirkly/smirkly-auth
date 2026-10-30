@@ -4,6 +4,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <auth/services/errors/access_token_errors.hpp>
 #include <auth/services/errors/change_password_errors.hpp>
@@ -34,7 +35,8 @@ PasswordService::PasswordService(
       reset_token_generator_(reset_token_generator),
       password_reset_policy_(password_reset_policy),
       runtime_policy_provider_(runtime_policy_provider),
-      password_validator_(password_policy) {}
+      max_password_length_(password_policy.max_length),
+      password_validator_(std::move(password_policy)) {}
 
 policies::PasswordResetPolicy PasswordService::GetResetPolicy() const {
   if (runtime_policy_provider_) {
@@ -48,6 +50,9 @@ void PasswordService::ChangePassword(
     const contracts::ChangePasswordCommand& cmd) {
   if (cmd.current_password.empty()) {
     throw errors::ChangePasswordValidation("current password is required");
+  }
+  if (cmd.current_password.size() > max_password_length_) {
+    throw errors::ChangePasswordValidation("current password is too long");
   }
 
   try {

@@ -449,7 +449,7 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 256
 
     SignInRequest:
       type: object
@@ -470,6 +470,7 @@ components:
         password:
           type: string
           format: password
+          maxLength: 256
 
     VerifyEmailRequest:
       type: object
@@ -521,7 +522,7 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 256
 
     ChangePasswordRequest:
       type: object
@@ -531,11 +532,12 @@ components:
         current_password:
           type: string
           format: password
+          maxLength: 256
         new_password:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 256
 
     SignInResponse:
       type: object

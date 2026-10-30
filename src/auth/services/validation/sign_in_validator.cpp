@@ -7,9 +7,9 @@
 #include <auth/domain/value_objects/phone.hpp>
 #include <auth/domain/value_objects/username.hpp>
 #include <auth/services/errors/sign_in_errors.hpp>
+#include <auth/services/policies/password_policy.hpp>
 
 namespace smirkly::auth::services::validation {
-constexpr std::size_t kMaxSignInPasswordLength = 72;
 
 NormalizedSignInInput SignInValidator::ValidateAndNormalize(
     const contracts::SignInCommand& cmd) const {
@@ -19,7 +19,7 @@ NormalizedSignInInput SignInValidator::ValidateAndNormalize(
   if (cmd.password.empty()) {
     throw errors::SignInValidation("password is required");
   }
-  if (cmd.password.size() > kMaxSignInPasswordLength) {
+  if (cmd.password.size() > policies::kMaxPasswordLength) {
     throw errors::SignInValidation("password is too long");
   }
 
