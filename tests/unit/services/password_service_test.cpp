@@ -258,6 +258,21 @@ UTEST(PasswordServiceChange, UsesStrongUserRead) {
                errors::InvalidCurrentPassword);
 }
 
+UTEST(PasswordServiceChange, RejectsOversizedCurrentPasswordBeforeUserRead) {
+  PasswordServiceFixture fixture;
+  EXPECT_CALL(fixture.user_repo, FindById(_, _)).Times(0);
+  EXPECT_CALL(fixture.password_hasher, Verify(_, _)).Times(0);
+
+  EXPECT_THROW(fixture.password_service.ChangePassword(
+                   contracts::AuthContext{.user_id = "user-id",
+                                          .session_id = "session-id"},
+                   contracts::ChangePasswordCommand{
+                       .current_password = std::string(257, 'a'),
+                       .new_password = "NewStrongPass123!",
+                   }),
+               errors::ChangePasswordValidation);
+}
+
 UTEST(PasswordServiceChange, UpdatesHashAndRevokesAllSessions) {
   PasswordServiceFixture fixture;
   EXPECT_CALL(fixture.user_repo,

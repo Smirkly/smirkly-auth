@@ -10,6 +10,7 @@
 #include <auth/infra/ids/uuid_generator.hpp>
 #include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
 #include <auth/infra/security/password/argon2id_password_hasher.hpp>
+#include <auth/infra/security/password/task_processor_password_hasher.hpp>
 #include <auth/infra/security/token/hmac_sha256_token_hasher.hpp>
 #include <auth/infra/security/token/random_token_generator.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
@@ -20,16 +21,20 @@ namespace smirkly::auth::components {
 struct AuthSecurityComponent::Impl {
   config::AuthSecuritySettings settings;
   infra::security::jwt::JwtCppTokenProvider token_provider;
-  infra::security::Argon2idPasswordHasher password_hasher;
+  infra::security::TaskProcessorPasswordHasher password_hasher;
   infra::security::HmacSha256TokenHasher refresh_token_hasher;
   infra::security::RandomVerificationCodeGenerator code_generator;
   infra::security::RandomTokenGenerator password_reset_token_generator;
   infra::ids::UuidGenerator uuid_generator;
 
-  explicit Impl(const userver::components::ComponentConfig& cfg)
+  Impl(const userver::components::ComponentConfig& cfg,
+       const userver::components::ComponentContext& ctx)
       : settings(config::ParseAuthSecuritySettings(cfg)),
         token_provider(config::LoadJwtConfig(settings.jwt)),
-        password_hasher(),
+        password_hasher(
+            ctx.GetTaskProcessor(settings.password_hashing.task_processor_name),
+            std::make_unique<infra::security::Argon2idPasswordHasher>(
+                settings.password_hashing.argon2id)),
         refresh_token_hasher(settings.refresh_token_pepper),
         code_generator(services::policies::kVerificationCodeLength),
         password_reset_token_generator(settings.password_reset_token_bytes),
@@ -40,7 +45,7 @@ AuthSecurityComponent::AuthSecurityComponent(
     const userver::components::ComponentConfig& cfg,
     const userver::components::ComponentContext& ctx)
     : userver::components::LoggableComponentBase(cfg, ctx),
-      impl_(std::make_unique<Impl>(cfg)) {}
+      impl_(std::make_unique<Impl>(cfg, ctx)) {}
 
 AuthSecurityComponent::~AuthSecurityComponent() = default;
 
@@ -53,6 +58,47 @@ type: object
 description: Auth security providers config
 additionalProperties: false
 properties:
+  password-hashing:
+    type: object
+    description: Password hashing execution and Argon2id settings
+    additionalProperties: false
+    properties:
+      task-processor:
+        type: string
+        description: Dedicated task processor for CPU and memory intensive password hashing
+        default: password-hashing-task-processor
+      argon2id:
+        type: object
+        description: Argon2id work factors and output sizes
+        additionalProperties: false
+        properties:
+          time-cost:
+            type: integer
+            description: Number of Argon2id memory-filling passes
+            minimum: 1
+            default: 2
+          memory-cost-kib:
+            type: integer
+            description: Memory used by each Argon2id operation in KiB
+            minimum: 8
+            default: 19456
+          parallelism:
+            type: integer
+            description: Number of lanes used by each Argon2id operation
+            minimum: 1
+            default: 1
+          salt-length:
+            type: integer
+            description: Random salt length in bytes
+            minimum: 8
+            maximum: 1024
+            default: 16
+          hash-length:
+            type: integer
+            description: Derived hash length in bytes
+            minimum: 4
+            maximum: 1024
+            default: 32
   refresh-token-pepper:
     type: string
     description: Secret pepper used to HMAC refresh/reset tokens before storing them

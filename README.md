@@ -85,6 +85,12 @@ Passwords are hashed with Argon2id. Authentication and recovery flows use shared
 PostgreSQL rate limits, and password-reset requests do not reveal whether an
 email address is registered.
 
+Argon2id runs on a dedicated `password-hashing-task-processor`, so its blocking
+CPU and memory work does not occupy request-processing threads. The default
+configuration uses two hashing workers and the OWASP baseline work factors
+`m=19456`, `t=2`, and `p=1`. Tune these values against production-class
+hardware with the `smirkly-auth_benchmark` Release target before deployment.
+
 ## Email delivery
 
 Sign-up stores the verification code and an email outbox job in the same
