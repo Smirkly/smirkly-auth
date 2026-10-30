@@ -10,6 +10,7 @@ FROM ${USERVER_IMAGE} AS dev
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes \
         curl \
+        libargon2-dev \
         libfreetype6 \
         libxi6 \
         libxext6 \
@@ -52,7 +53,10 @@ RUN cmake --preset release -DSMIRKLY_AUTH_ENABLE_TESTSUITE=OFF -DSMIRKLY_AUTH_EN
 
 FROM ${USERVER_IMAGE} AS prod
 
-RUN groupadd --system --gid 10001 smirkly-auth \
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes libargon2-1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 smirkly-auth \
     && useradd --system --uid 10001 --gid smirkly-auth \
         --home-dir /home/smirkly-auth --create-home smirkly-auth \
     && install -d -o smirkly-auth -g smirkly-auth \

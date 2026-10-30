@@ -6,6 +6,7 @@ cmake-format
 gdb
 git
 libabsl-dev
+libargon2-dev
 libbenchmark-dev
 libboost-context1.83-dev
 libboost-coroutine1.83-dev

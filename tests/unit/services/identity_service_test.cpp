@@ -39,7 +39,8 @@ struct IdentityServiceFixture final {
   };
 };
 
-UTEST(IdentityServiceSignUp, RateLimitStopsBeforeUniquenessChecksAndBcrypt) {
+UTEST(IdentityServiceSignUp,
+      RateLimitStopsBeforeUniquenessChecksAndPasswordHashing) {
   IdentityServiceFixture fixture;
   fixture.sign_up_attempt_repo.allow_attempt = false;
 

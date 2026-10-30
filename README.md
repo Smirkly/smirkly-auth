@@ -81,7 +81,7 @@ revokes the affected session.
 `AUTH_REFRESH_TOKEN_PEPPER` and the JWT private key are secrets. Do not commit
 them. Changing the refresh-token pepper invalidates existing sessions.
 
-Passwords are hashed with bcrypt. Authentication and recovery flows use shared
+Passwords are hashed with Argon2id. Authentication and recovery flows use shared
 PostgreSQL rate limits, and password-reset requests do not reveal whether an
 email address is registered.
 

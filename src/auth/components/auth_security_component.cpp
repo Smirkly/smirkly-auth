@@ -9,7 +9,7 @@
 #include <auth/config/auth_security_config.hpp>
 #include <auth/infra/ids/uuid_generator.hpp>
 #include <auth/infra/security/jwt/jwt_cpp_token_provider.hpp>
-#include <auth/infra/security/password/bcrypt_password_hasher.hpp>
+#include <auth/infra/security/password/argon2id_password_hasher.hpp>
 #include <auth/infra/security/token/hmac_sha256_token_hasher.hpp>
 #include <auth/infra/security/token/random_token_generator.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
@@ -20,7 +20,7 @@ namespace smirkly::auth::components {
 struct AuthSecurityComponent::Impl {
   config::AuthSecuritySettings settings;
   infra::security::jwt::JwtCppTokenProvider token_provider;
-  infra::security::BcryptPasswordHasher password_hasher;
+  infra::security::Argon2idPasswordHasher password_hasher;
   infra::security::HmacSha256TokenHasher refresh_token_hasher;
   infra::security::RandomVerificationCodeGenerator code_generator;
   infra::security::RandomTokenGenerator password_reset_token_generator;

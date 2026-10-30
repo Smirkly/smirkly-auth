@@ -109,7 +109,9 @@ jobs:
             run: |
                 DEPS_FILE="https://raw.githubusercontent.com/userver-framework/userver/refs/tags/v3.0/scripts/docs/en/deps/${{matrix.os}}.md"
                 sudo apt update
-                sudo apt install --allow-downgrades -y $(wget -q -O - ${DEPS_FILE})
+                sudo apt install --allow-downgrades -y \
+                    $(wget -q -O - ${DEPS_FILE}) \
+                    libargon2-dev
                 python3 -m pip install -r requirements.txt
 
           - name: Setup ccache
