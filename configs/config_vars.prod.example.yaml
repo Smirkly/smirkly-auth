@@ -3,6 +3,10 @@ worker-threads: 4
 worker-monitor-threads: 1
 worker-fs-threads: 2
 worker-email-outbox-threads: 2
+worker-password-hashing-threads: 2
+argon2-time-cost: 2
+argon2-memory-cost-kib: 19456
+argon2-parallelism: 1
 logger-level: info
 
 is-testing: false

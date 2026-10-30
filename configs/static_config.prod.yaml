@@ -26,6 +26,11 @@ components_manager:
             worker_threads: $worker-email-outbox-threads
             worker_threads#fallback: 1
 
+        password-hashing-task-processor:
+            thread_name: pwdhash-worker
+            worker_threads: $worker-password-hashing-threads
+            worker_threads#fallback: 2
+
     default_task_processor: main-task-processor
 
     components:
@@ -46,6 +51,17 @@ components_manager:
         auth-security:
             password_reset_token_bytes: 32
             refresh-token-pepper: $AUTH_REFRESH_TOKEN_PEPPER
+            password-hashing:
+                task-processor: password-hashing-task-processor
+                argon2id:
+                    time-cost: $argon2-time-cost
+                    time-cost#fallback: 2
+                    memory-cost-kib: $argon2-memory-cost-kib
+                    memory-cost-kib#fallback: 19456
+                    parallelism: $argon2-parallelism
+                    parallelism#fallback: 1
+                    salt-length: 16
+                    hash-length: 32
             jwt:
                 issuer: smirkly-auth
                 audience: $AUTH_JWT_AUDIENCE
