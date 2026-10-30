@@ -26,6 +26,7 @@ if (NOT CURL_FOUND)
 endif()
 
 find_package(OpenSSL REQUIRED Crypto)
+find_package(Argon2 REQUIRED)
 
 userver_setup_environment()
 
@@ -68,10 +69,6 @@ userver_add_sql_library(
         write/users/*.sql
 )
 
-# include submodules
-add_subdirectory(third_party/libbcrypt)
-include_directories(third_party/libbcrypt/include)
-
 # Common sources
 include_directories(src)
 
@@ -91,7 +88,7 @@ target_link_libraries(
         userver::core
         userver::postgresql
         ${PROJECT_NAME}_sql
-        bcrypt
+        Argon2::Argon2
         CURL::libcurl
         OpenSSL::Crypto
         cpp-jwt

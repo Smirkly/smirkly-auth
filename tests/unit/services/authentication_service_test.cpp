@@ -146,7 +146,7 @@ UTEST(AuthenticationServiceSignIn, AllowsUnverifiedEmailWhenPolicyDisabled) {
 }
 
 UTEST(AuthenticationServiceSignIn,
-      RejectsTooLongPasswordBeforeRateLimitAndBcrypt) {
+      RejectsTooLongPasswordBeforeRateLimitAndPasswordHashing) {
   AuthenticationServiceFixture fixture;
 
   EXPECT_THROW(static_cast<void>(fixture.authentication_service.SignIn(
