@@ -26,6 +26,7 @@ AUTH_JWT_KEY_ID: smirkly-auth-prod-rs256
 AUTH_JWT_PRIVATE_KEY_PATH: /app/configs/secrets/auth_jwt_private.pem
 AUTH_JWT_PUBLIC_KEY_PATH: /app/configs/secrets/auth_jwt_public.pem
 AUTH_REFRESH_TOKEN_PEPPER: replace-with-secret-store-value
+AUTH_VERIFICATION_CODE_PEPPER: replace-with-secret-store-value
 
 AUTH_SMTP_HOST: smtp.example.com
 AUTH_SMTP_PORT: 465

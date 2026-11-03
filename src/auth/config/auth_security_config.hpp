@@ -31,6 +31,7 @@ struct AuthSecuritySettings {
   PasswordHashingSettings password_hashing;
   std::size_t password_reset_token_bytes{32};
   std::string refresh_token_pepper;
+  std::string verification_code_pepper;
 };
 
 AuthSecuritySettings ParseAuthSecuritySettings(

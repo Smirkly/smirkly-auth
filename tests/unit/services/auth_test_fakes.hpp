@@ -59,6 +59,40 @@ class FakePasswordHasher final : public ports::PasswordHasher {
   mutable std::size_t verify_count{0};
 };
 
+class FakeVerificationCodeHasher final
+    : public ports::security::VerificationCodeHasher {
+ public:
+  [[nodiscard]] std::string Hash(std::string_view user_id,
+                                 std::string_view code) const override {
+    ++hash_count;
+    last_user_id = user_id;
+    last_code = code;
+    return MakeHash(user_id, code);
+  }
+
+  [[nodiscard]] bool Verify(std::string_view user_id, std::string_view code,
+                            std::string_view hash) const override {
+    ++verify_count;
+    last_user_id = user_id;
+    last_code = code;
+    last_hash = hash;
+    return hash == MakeHash(user_id, code);
+  }
+
+  mutable std::size_t hash_count{0};
+  mutable std::size_t verify_count{0};
+  mutable std::string last_user_id;
+  mutable std::string last_code;
+  mutable std::string last_hash;
+
+ private:
+  [[nodiscard]] static std::string MakeHash(std::string_view user_id,
+                                            std::string_view code) {
+    return "verification-code-hash:" + std::string{user_id} + ":" +
+           std::string{code};
+  }
+};
+
 class FakeTokenHasher final : public ports::security::TokenHasher {
  public:
   [[nodiscard]] std::string Hash(std::string_view token) const override {
@@ -349,11 +383,11 @@ class FakeUserRepository final : public ports::UserRepository {
     return std::nullopt;
   }
   [[nodiscard]] domain::User Insert(ports::DbTransaction&,
-                                    const ports::NewUserData&) override {
-    throw std::logic_error("unused");
+                                    const ports::NewUserData& data) override {
+    return InsertUser(data);
   }
-  [[nodiscard]] domain::User Insert(const ports::NewUserData&) override {
-    throw std::logic_error("unused");
+  [[nodiscard]] domain::User Insert(const ports::NewUserData& data) override {
+    return InsertUser(data);
   }
   void SetEmailVerified(ports::DbTransaction&, std::string_view,
                         bool) override {}
@@ -374,10 +408,29 @@ class FakeUserRepository final : public ports::UserRepository {
 
   std::map<std::string, domain::User> users;
   std::map<std::string, domain::User> replica_users;
+  std::string next_insert_id{"inserted-user-id"};
   ports::ReadConsistency last_find_consistency{
       ports::ReadConsistency::kEventual};
 
  private:
+  domain::User InsertUser(const ports::NewUserData& data) {
+    const auto now = std::chrono::system_clock::now();
+    domain::User user{
+        .id = next_insert_id,
+        .username = data.username,
+        .password = data.password_hash,
+        .phone = data.phone,
+        .email = data.email,
+        .is_email_verified = false,
+        .is_phone_verified = false,
+        .created_at = now,
+        .password_updated_at = now,
+        .deleted_at = std::nullopt,
+    };
+    users[user.id] = user;
+    return user;
+  }
+
   [[nodiscard]] const std::map<std::string, domain::User>& UsersFor(
       ports::ReadConsistency consistency) const {
     if (consistency == ports::ReadConsistency::kEventual &&
@@ -427,8 +480,19 @@ class FakeEmailVerificationRepository final
     : public ports::EmailVerificationRepository {
  public:
   ports::EmailVerification Insert(
-      ports::DbTransaction&, const ports::NewEmailVerificationData&) override {
-    throw std::logic_error("unused");
+      ports::DbTransaction&,
+      const ports::NewEmailVerificationData& data) override {
+    ++insert_count;
+    last_insert = data;
+    active = ports::EmailVerification{
+        .id = next_insert_id,
+        .user_id = data.user_id,
+        .code_hash = data.code_hash,
+        .expires_at = data.expires_at,
+        .used_at = std::nullopt,
+        .attempts = 0,
+    };
+    return *active;
   }
   std::optional<ports::EmailVerification> FindActiveByUserId(
       std::string_view user_id, std::chrono::system_clock::time_point,
@@ -506,7 +570,10 @@ class FakeEmailVerificationRepository final
   }
 
   std::optional<ports::EmailVerification> active;
+  std::optional<ports::NewEmailVerificationData> last_insert;
+  std::string next_insert_id{"inserted-verification-id"};
   ports::EmailVerificationAttemptCounters counters;
+  std::size_t insert_count{0};
   std::size_t last_find_max_attempts{0};
   std::size_t last_increment_max_attempts{0};
   std::size_t record_attempt_count{0};
@@ -626,7 +693,13 @@ class FakeDeviceRepository final : public ports::DeviceRepository {
 class UnusedVerificationCodeGenerator final
     : public ports::VerificationCodeGenerator {
  public:
-  std::string Generate() override { return "123456"; }
+  std::string Generate() override {
+    ++generate_count;
+    return code;
+  }
+
+  std::string code{"123456"};
+  std::size_t generate_count{0};
 };
 
 }  // namespace smirkly::auth::tests

@@ -17,6 +17,7 @@ namespace smirkly::auth::services::ports::security {
 class JwtTokenProvider;
 class TokenGenerator;
 class TokenHasher;
+class VerificationCodeHasher;
 }  // namespace smirkly::auth::services::ports::security
 
 namespace smirkly::auth::services::ports::support {
@@ -50,6 +51,12 @@ class AuthSecurityComponent final
 
   const services::ports::security::TokenHasher& GetRefreshTokenHasher()
       const noexcept;
+
+  services::ports::security::VerificationCodeHasher&
+  GetVerificationCodeHasher() noexcept;
+
+  const services::ports::security::VerificationCodeHasher&
+  GetVerificationCodeHasher() const noexcept;
 
   services::ports::security::TokenGenerator&
   GetPasswordResetTokenGenerator() noexcept;

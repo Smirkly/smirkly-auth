@@ -53,6 +53,7 @@ struct AuthApplicationComponent::Impl final {
             infra.GetEmailOutboxRepository(),
             infra.GetEmailVerificationRepository(),
             infra.GetSignUpAttemptRepository(), security.GetPasswordHasher(),
+            security.GetVerificationCodeHasher(),
             security.GetVerificationCodeGenerator(), {}, {}, {},
             &runtime_policy_provider),
         authentication_service(

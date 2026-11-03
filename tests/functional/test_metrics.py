@@ -51,4 +51,4 @@ async def test_password_hashing_uses_dedicated_task_processor(
     assert after.value_at(
         "engine.task-processors.tasks.created",
         labels=labels,
-    ) >= created_before + 2
+    ) == created_before + 1

@@ -21,6 +21,7 @@ IdentityService::IdentityService(
     ports::EmailVerificationRepository& email_verification_repo,
     ports::SignUpAttemptRepository& sign_up_attempt_repo,
     ports::PasswordHasher& password_hasher,
+    ports::security::VerificationCodeHasher& verification_code_hasher,
     ports::VerificationCodeGenerator& code_generator,
     policies::SignUpPolicy sign_up_policy,
     policies::SignUpRateLimitPolicy sign_up_rate_limit_policy,
@@ -32,6 +33,7 @@ IdentityService::IdentityService(
       email_verification_repo_(email_verification_repo),
       sign_up_attempt_repo_(sign_up_attempt_repo),
       password_hasher_(password_hasher),
+      verification_code_hasher_(verification_code_hasher),
       code_generator_(code_generator),
       sign_up_rate_limit_policy_(sign_up_rate_limit_policy),
       email_verification_policy_(email_verification_policy),
@@ -101,7 +103,8 @@ contracts::SignUpResult IdentityService::SignUp(
 
   if (user.email) {
     const std::string raw_code = code_generator_.Generate();
-    const std::string code_hash = password_hasher_.Hash(raw_code);
+    const std::string code_hash =
+        verification_code_hasher_.Hash(user.id, raw_code);
     const auto now = std::chrono::system_clock::now();
 
     auto verification_data = factories::EmailVerificationFactory::Create(
@@ -157,7 +160,8 @@ void IdentityService::VerifyEmail(const contracts::VerifyEmailCommand& cmd,
   }
 
   const auto& verification = *verification_opt;
-  if (!password_hasher_.Verify(cmd.code, verification.code_hash)) {
+  if (!verification_code_hasher_.Verify(user_opt->id, cmd.code,
+                                        verification.code_hash)) {
     auto tx = transaction_manager_.Begin("auth.verify_email.invalid_code");
     email_verification_repo_.IncrementAttempts(*tx, verification.id, now,
                                                policy.max_code_attempts);
@@ -201,7 +205,8 @@ void IdentityService::ResendEmailVerification(
     email_verification_repo_.MarkActiveUsedByUserId(*tx, user_opt->id, now);
 
     const std::string raw_code = code_generator_.Generate();
-    const std::string code_hash = password_hasher_.Hash(raw_code);
+    const std::string code_hash =
+        verification_code_hasher_.Hash(user_opt->id, raw_code);
     auto verification_data = factories::EmailVerificationFactory::Create(
         user_opt->id, code_hash, meta, now, policy.code_ttl);
     email_verification_repo_.Insert(*tx, verification_data);

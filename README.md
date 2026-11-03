@@ -78,8 +78,10 @@ Refresh tokens are stored in an HttpOnly cookie and only their HMAC hashes are
 persisted in PostgreSQL. Refresh rotates the token; reuse of an old token
 revokes the affected session.
 
-`AUTH_REFRESH_TOKEN_PEPPER` and the JWT private key are secrets. Do not commit
-them. Changing the refresh-token pepper invalidates existing sessions.
+`AUTH_REFRESH_TOKEN_PEPPER`, `AUTH_VERIFICATION_CODE_PEPPER`, and the JWT
+private key are secrets. Do not commit them. Changing the refresh-token pepper
+invalidates existing sessions. Changing the verification-code pepper
+invalidates active email verification codes.
 
 Passwords are hashed with Argon2id. Authentication and recovery flows use shared
 PostgreSQL rate limits, and password-reset requests do not reveal whether an
@@ -90,6 +92,10 @@ CPU and memory work does not occupy request-processing threads. The default
 configuration uses two hashing workers and the OWASP baseline work factors
 `m=19456`, `t=2`, and `p=1`. Tune these values against production-class
 hardware with the `smirkly-auth_benchmark` Release target before deployment.
+
+Email verification codes are protected with a separate user-scoped
+HMAC-SHA256 key. Password hashing and verification-code hashing therefore have
+independent algorithms, resource costs, and secret-rotation boundaries.
 
 ## Email delivery
 
