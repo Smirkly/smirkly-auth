@@ -82,6 +82,11 @@ AuthSecuritySettings ParseAuthSecuritySettings(
   if (settings.refresh_token_pepper.empty()) {
     throw std::runtime_error("refresh-token-pepper must not be empty");
   }
+  settings.verification_code_pepper =
+      cfg["verification-code-pepper"].As<std::string>();
+  if (settings.verification_code_pepper.empty()) {
+    throw std::runtime_error("verification-code-pepper must not be empty");
+  }
   settings.jwt = JwtSettings{
       .private_key_path = jwt["private-key-path"].As<std::string>(),
       .public_key_path = jwt["public-key-path"].As<std::string>(),

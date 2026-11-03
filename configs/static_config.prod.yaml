@@ -51,6 +51,7 @@ components_manager:
         auth-security:
             password_reset_token_bytes: 32
             refresh-token-pepper: $AUTH_REFRESH_TOKEN_PEPPER
+            verification-code-pepper: $AUTH_VERIFICATION_CODE_PEPPER
             password-hashing:
                 task-processor: password-hashing-task-processor
                 argon2id:

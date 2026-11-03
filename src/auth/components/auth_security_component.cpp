@@ -13,6 +13,7 @@
 #include <auth/infra/security/password/task_processor_password_hasher.hpp>
 #include <auth/infra/security/token/hmac_sha256_token_hasher.hpp>
 #include <auth/infra/security/token/random_token_generator.hpp>
+#include <auth/infra/security/verification/hmac_sha256_verification_code_hasher.hpp>
 #include <auth/infra/security/verification/random_verification_code_generator.hpp>
 #include <auth/services/policies/verification_code_policy.hpp>
 
@@ -23,6 +24,7 @@ struct AuthSecurityComponent::Impl {
   infra::security::jwt::JwtCppTokenProvider token_provider;
   infra::security::TaskProcessorPasswordHasher password_hasher;
   infra::security::HmacSha256TokenHasher refresh_token_hasher;
+  infra::security::HmacSha256VerificationCodeHasher verification_code_hasher;
   infra::security::RandomVerificationCodeGenerator code_generator;
   infra::security::RandomTokenGenerator password_reset_token_generator;
   infra::ids::UuidGenerator uuid_generator;
@@ -36,6 +38,7 @@ struct AuthSecurityComponent::Impl {
             std::make_unique<infra::security::Argon2idPasswordHasher>(
                 settings.password_hashing.argon2id)),
         refresh_token_hasher(settings.refresh_token_pepper),
+        verification_code_hasher(settings.verification_code_pepper),
         code_generator(services::policies::kVerificationCodeLength),
         password_reset_token_generator(settings.password_reset_token_bytes),
         uuid_generator() {}
@@ -102,6 +105,9 @@ properties:
   refresh-token-pepper:
     type: string
     description: Secret pepper used to HMAC refresh/reset tokens before storing them
+  verification-code-pepper:
+    type: string
+    description: Dedicated secret pepper used to HMAC email verification codes
   password_reset_token_bytes:
     type: integer
     description: Random byte length for generated password reset tokens
@@ -164,6 +170,16 @@ AuthSecurityComponent::GetRefreshTokenHasher() noexcept {
 const services::ports::security::TokenHasher&
 AuthSecurityComponent::GetRefreshTokenHasher() const noexcept {
   return impl_->refresh_token_hasher;
+}
+
+services::ports::security::VerificationCodeHasher&
+AuthSecurityComponent::GetVerificationCodeHasher() noexcept {
+  return impl_->verification_code_hasher;
+}
+
+const services::ports::security::VerificationCodeHasher&
+AuthSecurityComponent::GetVerificationCodeHasher() const noexcept {
+  return impl_->verification_code_hasher;
 }
 
 services::ports::security::TokenGenerator&

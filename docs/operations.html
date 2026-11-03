@@ -66,6 +66,10 @@
                   <td>Secret pepper for HMAC-SHA256 refresh token hashes. Changing it invalidates existing refresh sessions unless rotated deliberately.</td>
                 </tr>
                 <tr>
+                  <td><code>AUTH_VERIFICATION_CODE_PEPPER</code></td>
+                  <td>Dedicated HMAC-SHA256 pepper for email verification codes. Changing it invalidates active verification codes without affecting passwords or sessions.</td>
+                </tr>
+                <tr>
                   <td><code>worker-email-outbox-threads</code></td>
                   <td>Dedicated task processor size for SMTP delivery work.</td>
                 </tr>

@@ -36,11 +36,11 @@ bool HasPrefix(std::string_view value, std::string_view prefix) noexcept {
 HmacSha256TokenHasher::HmacSha256TokenHasher(std::string pepper)
     : pepper_(std::move(pepper)) {
   if (pepper_.empty()) {
-    throw std::runtime_error("refresh token pepper must not be empty");
+    throw std::runtime_error("HMAC pepper must not be empty");
   }
   if (pepper_.size() >
       static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-    throw std::runtime_error("refresh token pepper is too large");
+    throw std::runtime_error("HMAC pepper is too large");
   }
 }
 
@@ -53,7 +53,7 @@ std::string HmacSha256TokenHasher::Hash(std::string_view token) const {
            reinterpret_cast<const unsigned char*>(token.data()), token.size(),
            digest.data(), &digest_size);
   if (result == nullptr) {
-    throw std::runtime_error("failed to calculate refresh token HMAC");
+    throw std::runtime_error("failed to calculate token HMAC");
   }
 
   return std::string{hmac_sha256_token_hasher::kHashPrefix} +

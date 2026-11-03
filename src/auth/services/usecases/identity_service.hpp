@@ -13,6 +13,7 @@
 #include <auth/services/ports/repositories/sign_up_attempt_repository.hpp>
 #include <auth/services/ports/repositories/user_repository.hpp>
 #include <auth/services/ports/security/password_hasher.hpp>
+#include <auth/services/ports/security/verification_code_hasher.hpp>
 #include <auth/services/ports/support/verification_code_generator.hpp>
 #include <auth/services/ports/uow/transaction_manager.hpp>
 #include <auth/services/validation/sign_up_validator.hpp>
@@ -28,6 +29,7 @@ class IdentityService final {
       ports::EmailVerificationRepository& email_verification_repo,
       ports::SignUpAttemptRepository& sign_up_attempt_repo,
       ports::PasswordHasher& password_hasher,
+      ports::security::VerificationCodeHasher& verification_code_hasher,
       ports::VerificationCodeGenerator& code_generator,
       policies::SignUpPolicy sign_up_policy = {},
       policies::SignUpRateLimitPolicy sign_up_rate_limit_policy = {},
@@ -59,6 +61,7 @@ class IdentityService final {
   ports::EmailVerificationRepository& email_verification_repo_;
   ports::SignUpAttemptRepository& sign_up_attempt_repo_;
   ports::PasswordHasher& password_hasher_;
+  ports::security::VerificationCodeHasher& verification_code_hasher_;
   ports::VerificationCodeGenerator& code_generator_;
   policies::SignUpRateLimitPolicy sign_up_rate_limit_policy_;
   policies::EmailVerificationPolicy email_verification_policy_;

@@ -237,6 +237,11 @@ docker compose --profile prod up --build -d smirkly-auth</code></pre>
                   <td>Yes</td>
                   <td>Secret pepper for HMAC-SHA256 refresh token hashes. Rotate only through a planned session invalidation or migration.</td>
                 </tr>
+                <tr>
+                  <td><code>AUTH_VERIFICATION_CODE_PEPPER</code></td>
+                  <td>Yes</td>
+                  <td>Dedicated HMAC-SHA256 pepper for email verification codes. Rotating it invalidates active verification codes.</td>
+                </tr>
               </tbody>
             </table>
           </div>
